@@ -24,25 +24,10 @@ function createPrismaClient() {
   });
 }
 
-export const prisma =
-  globalForPrisma.socialPrismaV2 ??
-  createPrismaClient();
+export const prisma = globalForPrisma.socialPrismaV2 ?? createPrismaClient();
 
 export function getPrismaClient() {
-  const client = globalForPrisma.socialPrismaV2 ?? prisma;
-
-  // Hot reload can leave us with an older generated client shape in memory.
-  if (typeof (client as PrismaClient & { directMessage?: unknown }).directMessage === "undefined") {
-    const freshClient = createPrismaClient();
-
-    if (process.env.NODE_ENV !== "production") {
-      globalForPrisma.socialPrismaV2 = freshClient;
-    }
-
-    return freshClient;
-  }
-
-  return client;
+  return globalForPrisma.socialPrismaV2 ?? prisma;
 }
 
 if (process.env.NODE_ENV !== "production") {

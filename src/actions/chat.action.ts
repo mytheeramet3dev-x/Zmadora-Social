@@ -47,48 +47,55 @@ type MessageRow = {
   readAt: Date | null;
 };
 
-function getDirectMessageDelegate(prisma: ReturnType<typeof getPrismaClient>) {
-  return (prisma as ReturnType<typeof getPrismaClient> & {
-    directMessage?: {
-      findMany: (...args: unknown[]) => Promise<MessageWithUsers[] | MessageRow[]>;
-      create: (...args: unknown[]) => Promise<MessageRow>;
-      updateMany: (...args: unknown[]) => Promise<unknown>;
-      count: (...args: unknown[]) => Promise<number>;
-    };
-  }).directMessage;
-}
+type ConversationOverviewRow = MessageWithUsers & {
+  contactId: string;
+  unreadCount: number;
+};
 
 async function findMessagesForOverview(prisma: ReturnType<typeof getPrismaClient>, userId: string) {
-  const directMessage = getDirectMessageDelegate(prisma);
-
-  if (directMessage) {
-    return (await directMessage.findMany({
-      where: {
-        OR: [{ senderId: userId }, { receiverId: userId }],
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-      take: 200,
-      include: {
-        sender: {
-          select: userPreviewSelect,
-        },
-        receiver: {
-          select: userPreviewSelect,
-        },
-      },
-    })) as MessageWithUsers[];
-  }
-
-  const rows = await prisma.$queryRaw<MessageWithUsers[]>(Prisma.sql`
+  return prisma.$queryRaw<ConversationOverviewRow[]>(Prisma.sql`
+    WITH ranked_messages AS (
+      SELECT
+        dm.id,
+        dm."senderId",
+        dm."receiverId",
+        dm.content,
+        dm."createdAt",
+        dm."readAt",
+        CASE
+          WHEN dm."senderId" = ${userId} THEN dm."receiverId"
+          ELSE dm."senderId"
+        END AS "contactId",
+        SUM(
+          CASE
+            WHEN dm."receiverId" = ${userId} AND dm."readAt" IS NULL THEN 1
+            ELSE 0
+          END
+        ) OVER (
+          PARTITION BY CASE
+            WHEN dm."senderId" = ${userId} THEN dm."receiverId"
+            ELSE dm."senderId"
+          END
+        )::int AS "unreadCount",
+        ROW_NUMBER() OVER (
+          PARTITION BY CASE
+            WHEN dm."senderId" = ${userId} THEN dm."receiverId"
+            ELSE dm."senderId"
+          END
+          ORDER BY dm."createdAt" DESC
+        ) AS rn
+      FROM "DirectMessage" dm
+      WHERE dm."senderId" = ${userId} OR dm."receiverId" = ${userId}
+    )
     SELECT
-      dm.id,
-      dm."senderId",
-      dm."receiverId",
-      dm.content,
-      dm."createdAt",
-      dm."readAt",
+      ranked_messages.id,
+      ranked_messages."senderId",
+      ranked_messages."receiverId",
+      ranked_messages.content,
+      ranked_messages."createdAt",
+      ranked_messages."readAt",
+      ranked_messages."contactId",
+      ranked_messages."unreadCount",
       json_build_object(
         'id', sender.id,
         'name', sender.name,
@@ -101,47 +108,29 @@ async function findMessagesForOverview(prisma: ReturnType<typeof getPrismaClient
         'username', receiver.username,
         'image', receiver.image
       ) AS receiver
-    FROM "DirectMessage" dm
-    JOIN "User" sender ON sender.id = dm."senderId"
-    JOIN "User" receiver ON receiver.id = dm."receiverId"
-    WHERE dm."senderId" = ${userId} OR dm."receiverId" = ${userId}
-    ORDER BY dm."createdAt" DESC
-    LIMIT 200
+    FROM ranked_messages
+    JOIN "User" sender ON sender.id = ranked_messages."senderId"
+    JOIN "User" receiver ON receiver.id = ranked_messages."receiverId"
+    WHERE ranked_messages.rn = 1
+    ORDER BY ranked_messages."createdAt" DESC
   `);
-
-  return rows;
 }
 
-async function markConversationAsRead(
+async function markConversationMessagesAsRead(
   prisma: ReturnType<typeof getPrismaClient>,
-  senderId: string,
-  receiverId: string
+  fromUserId: string,
+  toUserId: string
 ) {
-  const directMessage = getDirectMessageDelegate(prisma);
-
-  if (directMessage) {
-    await directMessage.updateMany({
-      where: {
-        senderId,
-        receiverId,
-        readAt: null,
-      },
-      data: {
-        readAt: new Date(),
-      },
-    });
-    return;
-  }
-
-  await prisma.$executeRaw(
-    Prisma.sql`
-      UPDATE "DirectMessage"
-      SET "readAt" = NOW()
-      WHERE "senderId" = ${senderId}
-        AND "receiverId" = ${receiverId}
-        AND "readAt" IS NULL
-    `
-  );
+  await prisma.directMessage.updateMany({
+    where: {
+      senderId: fromUserId,
+      receiverId: toUserId,
+      readAt: null,
+    },
+    data: {
+      readAt: new Date(),
+    },
+  });
 }
 
 async function findConversationMessages(
@@ -149,37 +138,24 @@ async function findConversationMessages(
   userId: string,
   otherUserId: string
 ) {
-  const directMessage = getDirectMessageDelegate(prisma);
-
-  if (directMessage) {
-    return (await directMessage.findMany({
-      where: {
-        OR: [
-          {
-            senderId: userId,
-            receiverId: otherUserId,
-          },
-          {
-            senderId: otherUserId,
-            receiverId: userId,
-          },
-        ],
-      },
-      orderBy: {
-        createdAt: "asc",
-      },
-      take: 100,
-    })) as MessageRow[];
-  }
-
-  return prisma.$queryRaw<MessageRow[]>(Prisma.sql`
-    SELECT id, "senderId", "receiverId", content, "createdAt", "readAt"
-    FROM "DirectMessage"
-    WHERE ("senderId" = ${userId} AND "receiverId" = ${otherUserId})
-       OR ("senderId" = ${otherUserId} AND "receiverId" = ${userId})
-    ORDER BY "createdAt" ASC
-    LIMIT 100
-  `);
+  return prisma.directMessage.findMany({
+    where: {
+      OR: [
+        {
+          senderId: userId,
+          receiverId: otherUserId,
+        },
+        {
+          senderId: otherUserId,
+          receiverId: userId,
+        },
+      ],
+    },
+    orderBy: {
+      createdAt: "asc",
+    },
+    take: 100,
+  });
 }
 
 async function createMessage(
@@ -188,47 +164,22 @@ async function createMessage(
   receiverId: string,
   content: string
 ) {
-  const directMessage = getDirectMessageDelegate(prisma);
-
-  if (directMessage) {
-    return (await directMessage.create({
-      data: {
-        senderId,
-        receiverId,
-        content,
-      },
-    })) as MessageRow;
-  }
-
-  const rows = await prisma.$queryRaw<MessageRow[]>(Prisma.sql`
-    INSERT INTO "DirectMessage" ("id", "senderId", "receiverId", "content", "createdAt", "updatedAt")
-    VALUES (${crypto.randomUUID().replace(/-/g, "").slice(0, 25)}, ${senderId}, ${receiverId}, ${content}, NOW(), NOW())
-    RETURNING id, "senderId", "receiverId", content, "createdAt", "readAt"
-  `);
-
-  return rows[0];
+  return prisma.directMessage.create({
+    data: {
+      senderId,
+      receiverId,
+      content,
+    },
+  });
 }
 
 async function countUnreadMessages(prisma: ReturnType<typeof getPrismaClient>, userId: string) {
-  const directMessage = getDirectMessageDelegate(prisma);
-
-  if (directMessage) {
-    return directMessage.count({
-      where: {
-        receiverId: userId,
-        readAt: null,
-      },
-    });
-  }
-
-  const rows = await prisma.$queryRaw<Array<{ count: bigint }>>(Prisma.sql`
-    SELECT COUNT(*)::bigint AS count
-    FROM "DirectMessage"
-    WHERE "receiverId" = ${userId}
-      AND "readAt" IS NULL
-  `);
-
-  return Number(rows[0]?.count ?? 0);
+  return prisma.directMessage.count({
+    where: {
+      receiverId: userId,
+      readAt: null,
+    },
+  });
 }
 
 export async function getChatState(activeContactId?: string | null) {
@@ -273,25 +224,16 @@ export async function getChatState(activeContactId?: string | null) {
 
     for (const message of directMessages) {
       const otherUser = message.senderId === userId ? message.receiver : message.sender;
-      const current = contactMap.get(otherUser.id);
-      const unreadIncrement = message.receiverId === userId && !message.readAt ? 1 : 0;
 
-      if (!current) {
-        contactMap.set(otherUser.id, {
-          id: otherUser.id,
-          name: otherUser.name,
-          username: otherUser.username,
-          image: otherUser.image,
-          lastMessage: message.content,
-          lastMessageAt: toIso(message.createdAt),
-          unreadCount: unreadIncrement,
-        });
-        continue;
-      }
-
-      if (unreadIncrement) {
-        current.unreadCount += 1;
-      }
+      contactMap.set(otherUser.id, {
+        id: otherUser.id,
+        name: otherUser.name,
+        username: otherUser.username,
+        image: otherUser.image,
+        lastMessage: message.content,
+        lastMessageAt: toIso(message.createdAt),
+        unreadCount: message.unreadCount,
+      });
     }
 
     for (const suggested of suggestedContacts) {
@@ -341,7 +283,7 @@ export async function getChatState(activeContactId?: string | null) {
         : contacts[0]?.id ?? null;
 
     if (resolvedActiveContactId) {
-      await markConversationAsRead(prisma, resolvedActiveContactId, userId);
+      await markConversationMessagesAsRead(prisma, resolvedActiveContactId, userId);
     }
 
     const messages = resolvedActiveContactId
