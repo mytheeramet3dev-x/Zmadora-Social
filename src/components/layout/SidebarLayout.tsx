@@ -16,16 +16,16 @@ function SidebarLayout({ sidebar, rightRail, children }: SidebarLayoutProps) {
   const gridClassName = useMemo(() => {
     if (!rightRail) {
       return isSidebarOpen
-        ? "lg:grid-cols-[280px_minmax(0,1fr)]"
+        ? "lg:grid-cols-[80px_minmax(0,1fr)] xl:grid-cols-[260px_minmax(0,1fr)]"
         : "lg:grid-cols-[minmax(0,1fr)]";
     }
 
     if (isSidebarOpen && isChatOpen) {
-      return "lg:grid-cols-[280px_minmax(0,1fr)] xl:[grid-template-columns:280px_minmax(0,1fr)_var(--chat-width)]";
+      return "lg:grid-cols-[80px_minmax(0,1fr)] xl:[grid-template-columns:260px_minmax(0,1fr)_var(--chat-width)]";
     }
 
     if (isSidebarOpen && !isChatOpen) {
-      return "lg:grid-cols-[280px_minmax(0,1fr)]";
+      return "lg:grid-cols-[80px_minmax(0,1fr)] xl:grid-cols-[260px_minmax(0,1fr)]";
     }
 
     if (!isSidebarOpen && isChatOpen) {
@@ -37,7 +37,7 @@ function SidebarLayout({ sidebar, rightRail, children }: SidebarLayoutProps) {
 
   return (
     <div
-      className={["grid grid-cols-1 gap-6", gridClassName].join(" ")}
+      className={["grid grid-cols-1 gap-0", gridClassName].join(" ")}
       style={{ "--chat-width": `${chatWidth}px` } as React.CSSProperties}
     >
       {isSidebarOpen ? <div className="hidden lg:block">{sidebar}</div> : null}

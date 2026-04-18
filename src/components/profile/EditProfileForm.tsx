@@ -23,7 +23,7 @@ type EditProfileFormProps = {
 };
 
 function inputClassName() {
-  return "w-full rounded-2xl border border-white/20 bg-white/35 px-4 py-3 text-sm text-foreground shadow-none outline-none transition placeholder:text-muted-foreground focus:border-sky-400/60 focus:bg-white/50 dark:bg-white/5 dark:focus:bg-white/10";
+  return "w-full rounded-2xl border border-border bg-background px-4 py-3 text-sm text-foreground shadow-none outline-none transition placeholder:text-muted-foreground focus:border-primary focus:ring-1 focus:ring-primary/50";
 }
 
 function EditProfileForm({
@@ -88,7 +88,7 @@ function EditProfileForm({
   }
 
   return (
-    <div className="mt-4 space-y-4 rounded-[28px] border border-white/20 bg-white/30 p-4 dark:bg-white/5">
+    <div className="mt-4 space-y-4 rounded-[28px] border border-border bg-muted/30 p-4">
       <div className="space-y-2">
         <label className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
           Profile photo
@@ -148,7 +148,7 @@ function EditProfileForm({
           onChange={(event) => setBio(event.target.value)}
           placeholder="Tell people a bit about yourself..."
           maxLength={280}
-          className="min-h-[120px] rounded-2xl border-white/20 bg-white/35 shadow-none focus-visible:ring-0 dark:bg-white/5"
+          className="min-h-[120px] rounded-2xl border-border bg-background shadow-none focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/50"
           disabled={isPending}
         />
         <p className="text-right text-xs text-muted-foreground">{bio.trim().length}/280</p>

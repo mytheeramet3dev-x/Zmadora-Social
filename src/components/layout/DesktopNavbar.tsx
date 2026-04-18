@@ -7,6 +7,7 @@ import NotificationBell from "@/components/notifications/NotificationBell";
 
 type DesktopNavbarProps = {
   isSignedIn: boolean;
+  userId?: string;
   profileHref: string;
   initialNotifications: {
     id: string;
@@ -38,6 +39,7 @@ type DesktopNavbarProps = {
 
 function DesktopNavbar({
   isSignedIn,
+  userId,
   profileHref,
   initialNotifications,
   unreadCount,
@@ -57,6 +59,7 @@ function DesktopNavbar({
       {isSignedIn ? (
         <>
           <NotificationBell
+            userId={userId!}
             initialNotifications={initialNotifications}
             initialUnreadCount={unreadCount}
           />

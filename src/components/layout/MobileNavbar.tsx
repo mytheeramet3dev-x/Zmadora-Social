@@ -24,6 +24,7 @@ import NotificationBell from "@/components/notifications/NotificationBell";
 import UserSearch from "@/components/search/UserSearch";
 
 type MobileNavbarProps = {
+  userId?: string;
   profileHref: string;
   initialNotifications: {
     id: string;
@@ -54,6 +55,7 @@ type MobileNavbarProps = {
 };
 
 function MobileNavbar({
+  userId,
   profileHref,
   initialNotifications,
   unreadCount,
@@ -102,11 +104,11 @@ function MobileNavbar({
               <>
                 <div className="px-1">
                   <NotificationBell
+                    userId={userId!}
                     initialNotifications={initialNotifications}
                     initialUnreadCount={unreadCount}
-                    className="w-full justify-start"
-                    showLabel={true}
-                    labelClassName="inline"
+                    className="flex w-full items-center justify-start gap-4 p-4"
+                    labelClassName="text-lg font-medium"
                   />
                 </div>
                 <Button

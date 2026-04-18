@@ -6,6 +6,7 @@ import toast from "react-hot-toast";
 import {
   createComment,
   deletePost,
+  getMoreComments,
   replyToComment,
   toggleCommentLike,
   toggleLike,
@@ -13,7 +14,7 @@ import {
 import UserQuickActions from "@/components/feed/UserQuickActions";
 import { Avatar, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+
 import { Textarea } from "@/components/ui/textarea";
 import {
   HeartIcon,
@@ -157,10 +158,10 @@ function CommentItem({
   return (
     <div className="space-y-3">
       <div className="flex items-start gap-3">
-        <Avatar className="h-9 w-9 border border-white/30">
+        <Avatar className="h-9 w-9 border border-border">
           <AvatarImage src={comment.author.image || "/avatar.png"} />
         </Avatar>
-        <div className="min-w-0 flex-1 rounded-2xl bg-white/35 px-3 py-2 dark:bg-white/5">
+        <div className="min-w-0 flex-1 rounded-2xl bg-muted px-3 py-2">
           <p className="text-xs font-medium">
             {comment.author.name || comment.author.username}
             <span className="ml-2 text-muted-foreground">
@@ -195,7 +196,7 @@ function CommentItem({
           </div>
 
           {showReplyBox ? (
-            <div className="mt-3 space-y-2 rounded-2xl border border-white/15 bg-white/20 p-3 dark:bg-white/5">
+            <div className="mt-3 space-y-2 rounded-2xl border border-border bg-muted/50 p-3">
               <Textarea
                 value={replyText}
                 onChange={(event) => setReplyText(event.target.value)}
@@ -235,7 +236,7 @@ function CommentItem({
       </div>
 
       {comment.replies?.length ? (
-        <div className="ml-12 space-y-3 border-l border-white/10 pl-4">
+        <div className="ml-12 space-y-3 border-l border-border pl-4">
           {comment.replies.map((reply) => (
             <CommentItem
               key={reply.id}
@@ -259,6 +260,8 @@ function PostCard({ post, viewerUserId }: PostCardProps) {
   const [comments, setComments] = useState(post.comments);
   const [commentText, setCommentText] = useState("");
   const [showComments, setShowComments] = useState(post.comments.length > 0);
+  const [hasMoreComments, setHasMoreComments] = useState(post.comments.length >= 2);
+  const [isLoadingMoreComments, startLoadMoreTransition] = useTransition();
   const [isCommentPending, startCommentTransition] = useTransition();
   const [isDeletePending, startDeleteTransition] = useTransition();
   const [isDeleted, setIsDeleted] = useState(false);
@@ -374,20 +377,42 @@ function PostCard({ post, viewerUserId }: PostCardProps) {
     });
   };
 
+  const handleLoadMoreComments = () => {
+    startLoadMoreTransition(async () => {
+      const result = await getMoreComments(post.id, comments.length);
+      
+      if (!result?.success || !result.comments) {
+        toast.error(result?.error || "Failed to load more comments");
+        return;
+      }
+
+      const parsedComments = result.comments.map((c: any) => ({
+        ...c,
+        createdAt: new Date(c.createdAt),
+        replies: c.replies?.map((r: any) => ({ ...r, createdAt: new Date(r.createdAt) }))
+      }));
+
+      setComments((prev) => [...prev, ...parsedComments]);
+      
+      if (result.comments.length < 20) {
+        setHasMoreComments(false);
+      }
+    });
+  };
+
   if (isDeleted) {
     return null;
   }
 
   return (
-    <Card className="overflow-hidden">
-      <CardContent className="p-5">
+    <article className="transition hover:bg-muted/10 p-5">
         <div className="flex items-start justify-between gap-3">
           <UserQuickActions user={post.author} viewerUserId={viewerUserId}>
             <button
               type="button"
-              className="flex min-w-0 flex-1 items-start gap-3 rounded-2xl text-left transition hover:bg-white/5"
+              className="flex min-w-0 flex-1 items-start gap-3 rounded-2xl text-left transition hover:bg-muted/50"
             >
-              <Avatar className="h-11 w-11 border border-white/40">
+              <Avatar className="h-11 w-11 border border-border">
                 <AvatarImage src={post.author.image || "/avatar.png"} />
               </Avatar>
 
@@ -396,7 +421,7 @@ function PostCard({ post, viewerUserId }: PostCardProps) {
                   <span className="text-sm font-semibold hover:underline">
                     {post.author.name || post.author.username}
                   </span>
-                  <span className="rounded-full border border-white/15 bg-white/10 px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                  <span className="rounded-full border border-border bg-muted px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
                     Profile
                   </span>
                 </div>
@@ -431,14 +456,13 @@ function PostCard({ post, viewerUserId }: PostCardProps) {
         ) : null}
 
         {post.image ? (
-          <div className="relative mt-4 h-64 overflow-hidden rounded-2xl border border-white/20 bg-white/20">
+          <div className="relative mt-4 h-64 overflow-hidden rounded-xl border border-border bg-muted">
             <Image
               src={post.image}
               alt="Post media"
               fill
               className="object-cover"
               sizes="(max-width: 768px) 100vw, 640px"
-              unoptimized
             />
           </div>
         ) : null}
@@ -465,80 +489,64 @@ function PostCard({ post, viewerUserId }: PostCardProps) {
           </Button>
         </div>
 
-        <div className="mt-5 space-y-4">
-          <div className="rounded-[24px] border border-white/20 bg-white/20 p-4 dark:bg-white/5">
-            <div className="mb-3 flex items-center justify-between">
-              <div>
-                <p className="text-sm font-semibold">Join the conversation</p>
-                <p className="text-xs text-muted-foreground">
-                  Add your comment below
-                </p>
-              </div>
-              <div className="rounded-full bg-white/25 px-3 py-1 text-xs text-muted-foreground dark:bg-white/10">
-                {commentCount} comments
-              </div>
-            </div>
-
-            <div className="rounded-[20px] border border-white/15 bg-white/30 p-3 dark:bg-white/5">
-              <div className="flex items-end gap-3">
-                <Textarea
-                  value={commentText}
-                  onChange={(event) => setCommentText(event.target.value)}
-                  placeholder="Write a comment..."
-                  className="min-h-[84px] border-none bg-transparent px-1 py-1 shadow-none focus-visible:ring-0"
-                  disabled={isCommentPending}
-                />
-                <Button
-                  type="button"
-                  onClick={handleCreateComment}
-                  disabled={isCommentPending || !commentText.trim()}
-                >
-                  {isCommentPending ? (
-                    <Loader2Icon className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <SendIcon className="h-4 w-4" />
-                  )}
-                </Button>
-              </div>
+        <div className="mt-4 border-t border-border pt-4">
+          <div className="flex items-start gap-3">
+            <div className="relative min-w-0 flex-1">
+              <Textarea
+                value={commentText}
+                onChange={(event) => setCommentText(event.target.value)}
+                placeholder="Write a comment..."
+                className="min-h-[44px] w-full resize-none rounded-2xl bg-muted/50 px-4 py-3 pr-12 text-sm shadow-none focus-visible:ring-1 focus-visible:ring-primary/50"
+                disabled={isCommentPending}
+              />
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
+                className="absolute right-1.5 top-1.5 h-8 w-8 rounded-full text-primary hover:bg-primary/10 hover:text-primary"
+                onClick={handleCreateComment}
+                disabled={isCommentPending || !commentText.trim()}
+              >
+                {isCommentPending ? (
+                  <Loader2Icon className="h-4 w-4 animate-spin" />
+                ) : (
+                  <SendIcon className="h-4 w-4" />
+                )}
+              </Button>
             </div>
           </div>
 
-          {showComments ? (
-            <div className="rounded-[24px] border border-white/20 bg-white/16 p-4 dark:bg-white/[0.04]">
-              <div className="mb-4 flex items-center justify-between border-b border-white/10 pb-3">
-                <div>
-                  <p className="text-sm font-semibold">Comments</p>
-                  <p className="text-xs text-muted-foreground">
-                    Replies and reactions from other people
-                  </p>
-                </div>
-                <div className="rounded-full bg-white/25 px-3 py-1 text-xs text-muted-foreground dark:bg-white/10">
-                  {commentCount}
-                </div>
-              </div>
+          {showComments && comments.length > 0 ? (
+            <div className="mt-5 space-y-4">
+              {comments.map((comment) => (
+                <CommentItem
+                  key={comment.id}
+                  comment={comment}
+                  viewerUserId={viewerUserId}
+                  onToggleLike={handleToggleCommentLike}
+                  onReply={handleReply}
+                />
+              ))}
 
-              {comments.length > 0 ? (
-                <div className="space-y-4">
-                  {comments.map((comment) => (
-                    <CommentItem
-                      key={comment.id}
-                      comment={comment}
-                      viewerUserId={viewerUserId}
-                      onToggleLike={handleToggleCommentLike}
-                      onReply={handleReply}
-                    />
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  No comments yet. Start the conversation.
-                </p>
+              {hasMoreComments && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-full text-muted-foreground hover:text-foreground mt-2"
+                  onClick={handleLoadMoreComments}
+                  disabled={isLoadingMoreComments}
+                >
+                  {isLoadingMoreComments ? (
+                    <><Loader2Icon className="mr-2 h-4 w-4 animate-spin" /> Loading...</>
+                  ) : (
+                    "View more comments"
+                  )}
+                </Button>
               )}
             </div>
           ) : null}
         </div>
-      </CardContent>
-    </Card>
+    </article>
   );
 }
 

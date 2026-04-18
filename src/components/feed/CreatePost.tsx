@@ -2,7 +2,7 @@
 
 import { useUser } from "@clerk/nextjs";
 import { useState } from "react";
-import { Card, CardContent } from "@/components/ui/card";
+
 import { Avatar, AvatarImage } from "@/components/ui/avatar";
 import { Textarea } from "@/components/ui/textarea";
 import { ImageIcon, Loader2Icon, SendIcon } from "lucide-react";
@@ -11,8 +11,7 @@ import { createPost } from "@/actions/post.action";
 import toast from "react-hot-toast";
 import ImageUpload from "@/components/ImageUpload";
 
-function CreatePost() {
-  const { user } = useUser();
+function CreatePost({ userImage }: { userImage?: string | null }) {
   const [content, setContent] = useState("");
   const [imageUrl, setImageUrl] = useState("");
   const [isPosting, setIsPosting] = useState(false);
@@ -43,12 +42,11 @@ function CreatePost() {
   };
 
   return (
-    <Card className="mb-6">
-      <CardContent className="pt-6">
+    <div id="create-post" className="p-5">
         <div className="space-y-4">
           <div className="flex space-x-4">
             <Avatar className="w-10 h-10">
-              <AvatarImage src={user?.imageUrl || "/avatar.png"} />
+              <AvatarImage src={userImage || "/avatar.png"} />
             </Avatar>
             <Textarea
               placeholder="What's on your mind?"
@@ -105,8 +103,7 @@ function CreatePost() {
             </Button>
           </div>
         </div>
-      </CardContent>
-    </Card>
+    </div>
   );
 }
 export default CreatePost;

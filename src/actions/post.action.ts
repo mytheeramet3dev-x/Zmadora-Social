@@ -68,6 +68,7 @@ const postSnapshotInclude = {
     orderBy: {
       createdAt: "asc" as const,
     },
+    take: 2,
   },
   likes: {
     select: {
@@ -81,6 +82,73 @@ const postSnapshotInclude = {
     },
   },
 } as const;
+
+const FEED_PAGE_SIZE = 6;
+
+type FeedPageOptions = {
+  cursor?: string | null;
+  take?: number;
+};
+
+type FeedPostRecord = {
+  id: string;
+  content: string | null;
+  image: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+  authorId: string;
+  author: {
+    id: string;
+    name: string | null;
+    image: string | null;
+    username: string;
+    bio: string | null;
+    location: string | null;
+    website: string | null;
+    followers?: {
+      followerId: string;
+    }[];
+    _count: {
+      followers: number;
+      posts: number;
+    };
+  };
+  comments: {
+    id: string;
+    content: string;
+    createdAt: Date;
+    author: {
+      id: string;
+      username: string;
+      image: string | null;
+      name: string | null;
+    };
+    likes: {
+      userId: string;
+    }[];
+    replies: {
+      id: string;
+      content: string;
+      createdAt: Date;
+      author: {
+        id: string;
+        username: string;
+        image: string | null;
+        name: string | null;
+      };
+      likes: {
+        userId: string;
+      }[];
+    }[];
+  }[];
+  likes: {
+    userId: string;
+  }[];
+  _count: {
+    likes: number;
+    comments: number;
+  };
+};
 
 async function getPostSnapshot(postId: string) {
   const post = await prisma.post.findUnique({
@@ -102,6 +170,111 @@ async function getPostSnapshot(postId: string) {
       },
       isFollowing: false,
     },
+  };
+}
+
+function mapFeedPost(
+  post: FeedPostRecord,
+  viewerUserId: string | null
+) {
+  const { followers, _count, ...author } = post.author;
+
+  return {
+    ...post,
+    author: {
+      ...author,
+      stats: {
+        followers: _count.followers,
+        posts: _count.posts,
+      },
+      isFollowing: viewerUserId ? (followers?.length ?? 0) > 0 : false,
+    },
+  };
+}
+
+async function getFeedPage({
+  cursor,
+  take = FEED_PAGE_SIZE,
+}: FeedPageOptions = {}) {
+  const viewerUserId = await getDbUserId();
+
+  const posts = await prisma.post.findMany({
+    take: take + 1,
+    ...(cursor
+      ? {
+          cursor: {
+            id: cursor,
+          },
+          skip: 1,
+        }
+      : {}),
+    orderBy: [
+      {
+        createdAt: "desc",
+      },
+      {
+        id: "desc",
+      },
+    ],
+    include: {
+      author: {
+        select: {
+          id: true,
+          name: true,
+          image: true,
+          username: true,
+          bio: true,
+          location: true,
+          website: true,
+          followers: viewerUserId
+            ? {
+                where: {
+                  followerId: viewerUserId,
+                },
+                select: {
+                  followerId: true,
+                },
+                take: 1,
+              }
+            : undefined,
+          _count: {
+            select: {
+              followers: true,
+              posts: true,
+            },
+          },
+        },
+      },
+      comments: {
+        where: {
+          parentId: null,
+        },
+        include: commentInclude,
+        orderBy: {
+          createdAt: "asc",
+        },
+        take: 2,
+      },
+      likes: {
+        select: {
+          userId: true,
+        },
+      },
+      _count: {
+        select: {
+          likes: true,
+          comments: true,
+        },
+      },
+    },
+  });
+
+  const hasMore = posts.length > take;
+  const pagePosts = hasMore ? posts.slice(0, take) : posts;
+
+  return {
+    posts: pagePosts.map((post) => mapFeedPost(post, viewerUserId)),
+    nextCursor: hasMore ? pagePosts[pagePosts.length - 1]?.id ?? null : null,
   };
 }
 
@@ -144,82 +317,20 @@ export async function createPost(content: string, image: string) {
 
 export async function getPosts() {
   try {
-    const viewerUserId = await getDbUserId();
-
-    const posts = await prisma.post.findMany({
-      orderBy: {
-        createdAt: "desc",
-      },
-      include: {
-        author: {
-          select: {
-            id: true,
-            name: true,
-            image: true,
-            username: true,
-            bio: true,
-            location: true,
-            website: true,
-            followers: viewerUserId
-              ? {
-                  where: {
-                    followerId: viewerUserId,
-                  },
-                  select: {
-                    followerId: true,
-                  },
-                  take: 1,
-                }
-              : undefined,
-            _count: {
-              select: {
-                followers: true,
-                posts: true,
-              },
-            },
-          },
-        },
-        comments: {
-          where: {
-            parentId: null,
-          },
-          include: commentInclude,
-          orderBy: {
-            createdAt: "asc",
-          },
-        },
-        likes: {
-          select: {
-            userId: true,
-          },
-        },
-        _count: {
-          select: {
-            likes: true,
-            comments: true,
-          },
-        },
-      },
-    });
-
-    return posts.map((post) => {
-      const { followers, _count, ...author } = post.author;
-
-      return {
-        ...post,
-        author: {
-          ...author,
-          stats: {
-            followers: _count.followers,
-            posts: _count.posts,
-          },
-          isFollowing: viewerUserId ? (followers?.length ?? 0) > 0 : false,
-        },
-      };
-    });
+    const { posts } = await getFeedPage();
+    return posts;
   } catch (error) {
     console.log("Error in getPosts", error);
     throw new Error("Failed to fetch posts");
+  }
+}
+
+export async function getPostsPage(cursor?: string | null) {
+  try {
+    return await getFeedPage({ cursor });
+  } catch (error) {
+    console.log("Error in getPostsPage", error);
+    throw new Error("Failed to fetch more posts");
   }
 }
 
@@ -294,10 +405,6 @@ export async function toggleLike(postId: string) {
       }
     }
 
-    revalidatePath("/");
-    if (post.author.username) {
-      revalidatePath(`/profile/${post.author.username}`);
-    }
     const postSnapshot = await getPostSnapshot(postId);
     if (postSnapshot) {
       publishFeedEvent({
@@ -419,10 +526,6 @@ async function createCommentInternal({
       });
     }
 
-    revalidatePath(`/`);
-    if (post.author.username) {
-      revalidatePath(`/profile/${post.author.username}`);
-    }
     const postSnapshot = await getPostSnapshot(postId);
     if (postSnapshot) {
       publishFeedEvent({
@@ -514,11 +617,6 @@ export async function toggleCommentLike(commentId: string) {
       }
     }
 
-    revalidatePath("/");
-    const username = comment.post.author.username;
-    if (username) {
-      revalidatePath(`/profile/${username}`);
-    }
     const postSnapshot = await getPostSnapshot(comment.postId);
     if (postSnapshot) {
       publishFeedEvent({
@@ -570,5 +668,26 @@ export async function deletePost(postId: string) {
   } catch (error) {
     console.error("Failed to delete post:", error);
     return { success: false, error: "Failed to delete post" };
+  }
+}
+
+export async function getMoreComments(postId: string, skip: number = 2) {
+  try {
+    const comments = await prisma.comment.findMany({
+      where: {
+        postId,
+        parentId: null,
+      },
+      include: commentInclude,
+      orderBy: {
+        createdAt: "asc",
+      },
+      skip,
+      take: 20,
+    });
+    return { success: true, comments };
+  } catch (error) {
+    console.error("Failed to load more comments:", error);
+    return { success: false, error: "Failed to load more comments" };
   }
 }

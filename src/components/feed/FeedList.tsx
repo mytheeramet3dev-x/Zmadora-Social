@@ -1,7 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import PostCard from "@/components/feed/PostCard";
+import { Loader2Icon } from "lucide-react";
+import { pusherClient } from "@/lib/pusher-client";
 
 type FeedListProps = {
   initialPosts: {
@@ -60,6 +62,7 @@ type FeedListProps = {
       comments: number;
     };
   }[];
+  initialCursor?: string | null;
   viewerUserId?: string | null;
 };
 
@@ -80,25 +83,23 @@ function normalizeFeedPost(post: FeedListProps["initialPosts"][number]) {
   };
 }
 
-function FeedList({ initialPosts, viewerUserId }: FeedListProps) {
+function FeedList({
+  initialPosts,
+  initialCursor = null,
+  viewerUserId,
+}: FeedListProps) {
+  const loadMoreRef = useRef<HTMLDivElement | null>(null);
   const [posts, setPosts] = useState<NormalizedPost[]>(() =>
     initialPosts.map((post) => normalizeFeedPost(post))
   );
+  const [nextCursor, setNextCursor] = useState<string | null>(initialCursor);
+  const [hasMore, setHasMore] = useState(Boolean(initialCursor));
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
 
   useEffect(() => {
-    const eventSource = new EventSource("/api/feed/stream");
+    const channel = pusherClient.subscribe("feed-channel");
 
-    const handleFeedEvent = (event: MessageEvent<string>) => {
-      const payload = JSON.parse(event.data) as
-        | {
-            type: "post_created" | "post_updated";
-            post: FeedListProps["initialPosts"][number];
-          }
-        | {
-            type: "post_deleted";
-            postId: string;
-          };
-
+    const handleFeedEvent = (payload: any) => {
       if (payload.type === "post_deleted") {
         setPosts((current) => current.filter((post) => post.id !== payload.postId));
         return;
@@ -130,20 +131,79 @@ function FeedList({ initialPosts, viewerUserId }: FeedListProps) {
       });
     };
 
-    eventSource.addEventListener("feed", handleFeedEvent as EventListener);
-    eventSource.onerror = () => {
-      eventSource.close();
-    };
+    channel.bind("feed-event", handleFeedEvent);
 
     return () => {
-      eventSource.removeEventListener("feed", handleFeedEvent as EventListener);
-      eventSource.close();
+      channel.unbind("feed-event", handleFeedEvent);
+      pusherClient.unsubscribe("feed-channel");
     };
   }, []);
 
+  useEffect(() => {
+    if (!hasMore || !nextCursor || !loadMoreRef.current) {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const target = entries[0];
+        if (!target?.isIntersecting || isLoadingMore) {
+          return;
+        }
+
+        setIsLoadingMore(true);
+
+        void (async () => {
+          try {
+            const response = await fetch(
+              `/api/feed?cursor=${encodeURIComponent(nextCursor)}`,
+              {
+                method: "GET",
+                cache: "no-store",
+              }
+            );
+
+            if (!response.ok) {
+              throw new Error("Failed to load more posts");
+            }
+
+            const payload = (await response.json()) as {
+              posts: FeedListProps["initialPosts"];
+              nextCursor: string | null;
+            };
+
+            setPosts((current) => {
+              const existingIds = new Set(current.map((post) => post.id));
+              const appendedPosts = payload.posts
+                .map((post) => normalizeFeedPost(post))
+                .filter((post) => !existingIds.has(post.id));
+
+              return [...current, ...appendedPosts];
+            });
+            setNextCursor(payload.nextCursor);
+            setHasMore(Boolean(payload.nextCursor));
+          } catch (error) {
+            console.error("Failed to load more posts:", error);
+          } finally {
+            setIsLoadingMore(false);
+          }
+        })();
+      },
+      {
+        rootMargin: "320px 0px",
+      }
+    );
+
+    observer.observe(loadMoreRef.current);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [hasMore, isLoadingMore, nextCursor]);
+
   if (posts.length === 0) {
     return (
-      <div className="glass-panel rounded-[28px] p-8 text-center">
+      <div className="p-8 text-center border-b border-border">
         <h2 className="text-xl font-semibold">No posts yet</h2>
         <p className="mt-2 text-sm text-muted-foreground">
           Your feed will show posts here once someone shares something.
@@ -153,7 +213,7 @@ function FeedList({ initialPosts, viewerUserId }: FeedListProps) {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="divide-y divide-border">
       {posts.map((post) => (
         <PostCard
           key={`${post.id}:${post._count.likes}:${post._count.comments}`}
@@ -161,6 +221,19 @@ function FeedList({ initialPosts, viewerUserId }: FeedListProps) {
           viewerUserId={viewerUserId}
         />
       ))}
+
+      <div ref={loadMoreRef} className="flex min-h-14 items-center justify-center">
+        {isLoadingMore ? (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Loader2Icon className="h-4 w-4 animate-spin" />
+            Loading more posts...
+          </div>
+        ) : hasMore ? (
+          <p className="text-xs text-muted-foreground">Scroll to load more</p>
+        ) : posts.length > 0 ? (
+          <p className="text-xs text-muted-foreground">You&apos;ve reached the end</p>
+        ) : null}
+      </div>
     </div>
   );
 }

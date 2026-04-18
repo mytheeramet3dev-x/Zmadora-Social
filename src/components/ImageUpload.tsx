@@ -62,6 +62,11 @@ function ImageUpload({ value, onChange, disabled = false }: ImageUploadProps) {
       }
 
       onChange(payload.url);
+      if (payload.warning) {
+        toast(payload.warning, {
+          icon: "Info",
+        });
+      }
       toast.success("Image uploaded");
     } catch (error) {
       const message =
@@ -166,7 +171,6 @@ function ImageUpload({ value, onChange, disabled = false }: ImageUploadProps) {
               fill
               className="object-cover"
               sizes="(max-width: 640px) 100vw, 448px"
-              unoptimized
             />
           </div>
         </div>

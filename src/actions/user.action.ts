@@ -2,7 +2,7 @@
 
 import prisma from "@/lib/prisma";
 import { publishNotificationEvent } from "@/lib/notification-events";
-import { auth, currentUser } from "@clerk/nextjs/server";
+import { auth, currentUser, clerkClient } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
 import { cache } from "react";
 
@@ -251,37 +251,38 @@ export async function getRandomUsers() {
 
     if (!userId) return [];
 
-    // get 3 random users exclude ourselves & users that we already follow
-    const randomUsers = await prisma.user.findMany({
+    const allOtherUsers = await prisma.user.findMany({
       where: {
-        AND: [
-          { NOT: { id: userId } },
-          {
-            NOT: {
-              followers: {
-                some: {
-                  followerId: userId,
-                },
-              },
-            },
-          },
-        ],
+        NOT: { id: userId },
       },
       select: {
         id: true,
         name: true,
         username: true,
         image: true,
-        _count: {
-          select: {
-            followers: true,
+        following: {
+          where: {
+            followingId: userId,
+          },
+        },
+        followers: {
+          where: {
+            followerId: userId,
           },
         },
       },
-      take: 3,
     });
 
-    return randomUsers;
+    allOtherUsers.sort((a, b) => {
+      const aFollowsUs = a.following.length > 0 ? 1 : 0;
+      const bFollowsUs = b.following.length > 0 ? 1 : 0;
+      return bFollowsUs - aFollowsUs;
+    });
+
+    return allOtherUsers.slice(0, 3).map(({ following, followers, ...rest }) => ({
+      ...rest,
+      isFollowing: followers.length > 0,
+    }));
   } catch (error) {
     console.log("Error fetching random users", error);
     return [];
@@ -565,9 +566,10 @@ export async function updateProfile({
   image: string;
 }) {
   try {
+    const { userId: clerkId } = await auth();
     const userId = await getDbUserId();
 
-    if (!userId) {
+    if (!userId || !clerkId) {
       return { success: false, error: "Sign in required" };
     }
 
@@ -597,6 +599,34 @@ export async function updateProfile({
         username: true,
       },
     });
+
+    try {
+      const client = await clerkClient();
+      await client.users.updateUser(clerkId, {
+        firstName: normalizedName ? normalizedName.split(" ")[0] : "",
+        lastName: normalizedName ? normalizedName.split(" ").slice(1).join(" ") : "",
+      });
+
+      if (image.trim()) {
+        try {
+          const imageUrl = new URL(image.trim());
+          if (imageUrl.protocol === "https:" && imageUrl.hostname === "res.cloudinary.com") {
+            const res = await fetch(imageUrl.toString());
+            if (res.ok) {
+              const blob = await res.blob();
+              const file = new File([blob], "profile.jpg", { type: blob.type || "image/jpeg" });
+              await client.users.updateUserProfileImage(clerkId, { file });
+            }
+          } else {
+            console.warn("SSRF Prevention: Blocked fetching from unauthorized URL:", image);
+          }
+        } catch (urlError) {
+          console.error("Invalid image URL provided:", urlError);
+        }
+      }
+    } catch (clerkError) {
+      console.error("Error syncing profile to Clerk:", clerkError);
+    }
 
     revalidatePath("/");
     revalidatePath(`/profile/${updatedUser.username}`);

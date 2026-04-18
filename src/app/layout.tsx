@@ -54,8 +54,8 @@ export default function RootLayout({
                 <div className="pointer-events-none absolute bottom-0 right-[-8rem] h-72 w-72 rounded-full bg-teal-200/30 blur-3xl dark:bg-teal-400/10" />
                 <Navbar />
 
-                <main className="py-8">
-                  <div className="mx-auto max-w-7xl px-4">
+                <main className="w-full">
+                  <div className="mx-auto max-w-[1536px] px-4 md:px-8">
                     <SidebarLayout sidebar={<Sidebar />} rightRail={<ChatRail />}>
                       {children}
                     </SidebarLayout>

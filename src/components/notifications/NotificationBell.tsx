@@ -18,6 +18,7 @@ import { useLayoutChrome } from "@/components/layout/LayoutChromeContext";
 import { Avatar, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { pusherClient } from "@/lib/pusher-client";
 
 type NotificationItem = {
   id: string;
@@ -46,6 +47,7 @@ type NotificationItem = {
 };
 
 type NotificationBellProps = {
+  userId: string;
   initialNotifications: NotificationItem[];
   initialUnreadCount: number;
   className?: string;
@@ -114,6 +116,7 @@ function formatNotificationTime(createdAt: string | Date) {
 }
 
 function NotificationBell({
+  userId,
   initialNotifications,
   initialUnreadCount,
   className,
@@ -144,22 +147,20 @@ function NotificationBell({
   }, [initialNotifications, initialUnreadCount]);
 
   useEffect(() => {
-    const eventSource = new EventSource("/api/notifications/stream");
+    if (!userId) return;
+    const channel = pusherClient.subscribe(`user-${userId}`);
 
     const handleNotificationEvent = () => {
       void refreshNotifications();
     };
 
-    eventSource.addEventListener("notification", handleNotificationEvent as EventListener);
+    channel.bind("notification-event", handleNotificationEvent);
 
     return () => {
-      eventSource.removeEventListener(
-        "notification",
-        handleNotificationEvent as EventListener
-      );
-      eventSource.close();
+      channel.unbind("notification-event", handleNotificationEvent);
+      pusherClient.unsubscribe(`user-${userId}`);
     };
-  }, [refreshNotifications]);
+  }, [refreshNotifications, userId]);
 
   const handleOpenChange = (open: boolean) => {
     if (!open || unreadCount === 0) return;
@@ -220,7 +221,7 @@ function NotificationBell({
         <DropdownMenu.Content
           align="end"
           sideOffset={12}
-          className="glass-panel z-50 w-[22rem] rounded-[24px] p-2 shadow-2xl outline-none"
+          className="z-50 w-[22rem] rounded-[24px] border border-border bg-popover p-2 shadow-2xl outline-none"
         >
           <div className="flex items-center justify-between px-3 pb-2 pt-1">
             <div>
@@ -261,11 +262,11 @@ function NotificationBell({
                       className={[
                         "flex w-full items-start gap-3 rounded-[20px] border px-3 py-3 text-left transition",
                         notification.read
-                          ? "border-white/10 bg-white/30 dark:bg-white/5"
-                          : "border-sky-300/60 bg-sky-50/80 dark:border-sky-400/20 dark:bg-sky-500/10",
+                          ? "border-transparent bg-transparent hover:bg-muted/50"
+                          : "border-primary/20 bg-primary/10",
                       ].join(" ")}
                     >
-                      <Avatar className="h-10 w-10 border border-white/40">
+                      <Avatar className="h-10 w-10 border border-border">
                         <AvatarImage src={notification.creator.image || "/avatar.png"} />
                       </Avatar>
 
@@ -286,7 +287,7 @@ function NotificationBell({
                 );
               })
             ) : (
-              <div className="rounded-[20px] border border-white/10 bg-white/30 px-4 py-8 text-center dark:bg-white/5">
+              <div className="rounded-[20px] border border-border bg-muted/30 px-4 py-8 text-center">
                 <BellIcon className="mx-auto h-6 w-6 text-muted-foreground" />
                 <p className="mt-3 text-sm font-medium">No notifications yet</p>
                 <p className="mt-1 text-xs text-muted-foreground">

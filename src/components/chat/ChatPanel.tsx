@@ -1,6 +1,6 @@
 "use client";
 
-import { getChatState } from "@/actions/chat.action";
+import { getChatState, sendDirectMessage } from "@/actions/chat.action";
 import { useLayoutChrome } from "@/components/layout/LayoutChromeContext";
 import { Avatar, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -10,10 +10,12 @@ import {
   PhoneIcon,
   SearchIcon,
   SendHorizonalIcon,
+  UsersIcon,
   VideoIcon,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import toast from "react-hot-toast";
+import { pusherClient } from "@/lib/pusher-client";
 
 type ChatContact = {
   id: string;
@@ -44,37 +46,16 @@ type ChatPanelProps = {
   initialState: ChatState;
 };
 
-type ChatSocketPayload =
-  | {
-      type: "connected";
-      userId: string;
-    }
-  | {
-      type: "chat_message";
-      contact: {
-        id: string;
-        name: string | null;
-        username: string;
-        image: string | null;
-      };
-      message: ChatMessage;
-    }
-  | {
-      type: "message_sent";
-      clientMessageId: string;
-      contact: {
-        id: string;
-        name: string | null;
-        username: string;
-        image: string | null;
-      };
-      message: ChatMessage;
-    }
-  | {
-      type: "message_error";
-      clientMessageId?: string;
-      error: string;
-    };
+type ChatSocketPayload = {
+  type: "chat_message";
+  contact: {
+    id: string;
+    name: string | null;
+    username: string;
+    image: string | null;
+  };
+  message: ChatMessage;
+};
 
 function formatMessageTime(createdAt: string) {
   return new Date(createdAt).toLocaleTimeString([], {
@@ -104,19 +85,6 @@ function emitUnreadCount(count: number) {
   );
 }
 
-async function getChatSocketUrl() {
-  const response = await fetch("/api/chat/socket-token", {
-    method: "POST",
-  });
-
-  if (!response.ok) {
-    throw new Error("Failed to create chat socket token");
-  }
-
-  const payload = (await response.json()) as { token: string };
-  const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-  return `${protocol}//${window.location.host}/api/chat/ws?token=${payload.token}`;
-}
 
 function ChatPanel({ initialState }: ChatPanelProps) {
   useLayoutChrome();
@@ -134,8 +102,57 @@ function ChatPanel({ initialState }: ChatPanelProps) {
   const [search, setSearch] = useState("");
   const [isSendPending, startSendTransition] = useTransition();
   const activeContactIdRef = useRef<string | null>(initialState.activeContactId);
-  const reconnectTimeoutRef = useRef<number | null>(null);
-  const socketRef = useRef<WebSocket | null>(null);
+
+  const [sidebarWidth, setSidebarWidth] = useState(80);
+  const sidebarRef = useRef<HTMLDivElement>(null);
+  const isResizing = useRef(false);
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizing.current || !sidebarRef.current) return;
+      const rect = sidebarRef.current.getBoundingClientRect();
+      let newWidth = e.clientX - rect.left;
+
+      if (newWidth < 140) newWidth = 80;
+      else if (newWidth < 240) newWidth = 240;
+      else if (newWidth > 480) newWidth = 480;
+
+      // Update DOM directly for smooth 60fps dragging
+      sidebarRef.current.style.width = `${newWidth}px`;
+    };
+
+    const handleMouseUp = (e: MouseEvent) => {
+      if (isResizing.current) {
+        isResizing.current = false;
+        document.body.style.cursor = "default";
+        document.body.style.userSelect = "auto";
+        
+        // Finalize state to match DOM
+        if (sidebarRef.current) {
+            const currentWidth = parseInt(sidebarRef.current.style.width, 10);
+            if (!isNaN(currentWidth)) {
+                setSidebarWidth(currentWidth);
+            }
+        }
+      }
+    };
+
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
+    return () => {
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, []);
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    isResizing.current = true;
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+  };
+
+  const isCollapsed = sidebarWidth <= 100;
 
   const syncChatState = useCallback(async (contactId?: string | null) => {
     const nextState = await getChatState(contactId ?? activeContactIdRef.current);
@@ -184,125 +201,54 @@ function ChatPanel({ initialState }: ChatPanelProps) {
   useEffect(() => {
     if (!viewerUserId) return;
 
-    let cancelled = false;
+    const channel = pusherClient.subscribe(`user-${viewerUserId}`);
 
-    const connect = async () => {
-      try {
-        const socketUrl = await getChatSocketUrl();
-        if (cancelled) return;
+    const handleChatEvent = (payload: ChatSocketPayload) => {
+      if (payload.type !== "chat_message") return;
 
-        const socket = new WebSocket(socketUrl);
-        socketRef.current = socket;
+      const incomingContactId = payload.message.senderId;
+      const shouldAppendToOpenThread = activeContactIdRef.current === incomingContactId;
 
-        socket.onmessage = (event) => {
-          const payload = JSON.parse(event.data) as ChatSocketPayload;
+      setContacts((current) =>
+        sortContacts([
+          ...current.filter((contact) => contact.id !== incomingContactId),
+          {
+            id: payload.contact.id,
+            name: payload.contact.name,
+            username: payload.contact.username,
+            image: payload.contact.image,
+            lastMessage: payload.message.content,
+            lastMessageAt: payload.message.createdAt,
+            unreadCount: shouldAppendToOpenThread
+              ? 0
+              : (current.find((contact) => contact.id === incomingContactId)?.unreadCount || 0) + 1,
+          },
+        ])
+      );
 
-          if (payload.type === "connected") {
-            return;
-          }
-
-          if (payload.type === "message_error") {
-            if (payload.clientMessageId && activeContactIdRef.current) {
-              setMessagesByContact((current) => ({
-                ...current,
-                [activeContactIdRef.current as string]: (current[activeContactIdRef.current as string] || []).filter(
-                  (message) => message.id !== payload.clientMessageId
-                ),
-              }));
-            }
-            toast.error(payload.error || "Failed to send message");
-            return;
-          }
-
-          if (payload.type === "message_sent") {
-            const contactId = payload.message.receiverId;
-            setMessagesByContact((current) => ({
-              ...current,
-              [contactId]: (current[contactId] || []).map((message) =>
-                message.id === payload.clientMessageId ? payload.message : message
-              ),
-            }));
-            setContacts((current) =>
-              sortContacts(
-                current.map((contact) =>
-                  contact.id === contactId
-                    ? {
-                        ...contact,
-                        lastMessage: payload.message.content,
-                        lastMessageAt: payload.message.createdAt,
-                      }
-                    : contact
-                )
-              )
-            );
-            return;
-          }
-
-          if (payload.type !== "chat_message") return;
-
-          const incomingContactId = payload.message.senderId;
-          const shouldAppendToOpenThread = activeContactIdRef.current === incomingContactId;
-
-          setContacts((current) =>
-            sortContacts([
-              ...current.filter((contact) => contact.id !== incomingContactId),
-              {
-                id: payload.contact.id,
-                name: payload.contact.name,
-                username: payload.contact.username,
-                image: payload.contact.image,
-                lastMessage: payload.message.content,
-                lastMessageAt: payload.message.createdAt,
-                unreadCount: shouldAppendToOpenThread
-                  ? 0
-                  : (current.find((contact) => contact.id === incomingContactId)?.unreadCount || 0) + 1,
-              },
-            ])
-          );
-
-          setMessagesByContact((current) => {
-            const thread = current[incomingContactId] || [];
-            if (thread.some((message) => message.id === payload.message.id)) {
-              return current;
-            }
-
-            return {
-              ...current,
-              [incomingContactId]: shouldAppendToOpenThread
-                ? [...thread, payload.message]
-                : thread,
-            };
-          });
-
-          if (shouldAppendToOpenThread) {
-            void syncChatState(incomingContactId);
-          }
+      setMessagesByContact((current) => {
+        const thread = current[incomingContactId] || [];
+        if (thread.some((message) => message.id === payload.message.id)) {
+          return current;
+        }
+        return {
+          ...current,
+          [incomingContactId]: shouldAppendToOpenThread
+            ? [...thread, payload.message]
+            : thread,
         };
+      });
 
-        socket.onclose = () => {
-          if (cancelled) return;
-          socketRef.current = null;
-          reconnectTimeoutRef.current = window.setTimeout(() => {
-            void connect();
-          }, 1500);
-        };
-      } catch {
-        if (cancelled) return;
-        reconnectTimeoutRef.current = window.setTimeout(() => {
-          void connect();
-        }, 2000);
+      if (shouldAppendToOpenThread) {
+        void syncChatState(incomingContactId);
       }
     };
 
-    void connect();
+    channel.bind("chat-event", handleChatEvent);
 
     return () => {
-      cancelled = true;
-      if (reconnectTimeoutRef.current) {
-        window.clearTimeout(reconnectTimeoutRef.current);
-      }
-      socketRef.current?.close();
-      socketRef.current = null;
+      channel.unbind("chat-event", handleChatEvent);
+      pusherClient.unsubscribe(`user-${viewerUserId}`);
     };
   }, [syncChatState, viewerUserId]);
 
@@ -347,12 +293,6 @@ function ChatPanel({ initialState }: ChatPanelProps) {
     const normalized = draft.trim();
     if (!normalized || !activeContactId || !viewerUserId) return;
 
-    const socket = socketRef.current;
-    if (!socket || socket.readyState !== WebSocket.OPEN) {
-      toast.error("Chat connection is not ready yet");
-      return;
-    }
-
     const clientMessageId = `temp-${crypto.randomUUID()}`;
     const optimisticMessage: ChatMessage = {
       id: clientMessageId,
@@ -381,98 +321,125 @@ function ChatPanel({ initialState }: ChatPanelProps) {
     );
     setDraft("");
 
-    startSendTransition(() => {
-      socket.send(
-        JSON.stringify({
-          type: "send_message",
-          clientMessageId,
-          receiverId: activeContactId,
-          content: normalized,
-        })
-      );
+    startSendTransition(async () => {
+      const result = await sendDirectMessage(activeContactId, normalized);
+      if (!result.success) {
+        // Rollback optimistic message on error
+        setMessagesByContact((current) => ({
+          ...current,
+          [activeContactId]: (current[activeContactId] || []).filter(
+            (message) => message.id !== clientMessageId
+          ),
+        }));
+        toast.error(result.error || "Failed to send message");
+        return;
+      }
+      // Replace optimistic message with the real one from the server
+      if (result.message) {
+        setMessagesByContact((current) => ({
+          ...current,
+          [activeContactId]: (current[activeContactId] || []).map((message) =>
+            message.id === clientMessageId ? (result.message as ChatMessage) : message
+          ),
+        }));
+      }
     });
   };
 
   return (
     <div className="hidden xl:block">
-      <div className="glass-panel sticky top-20 overflow-hidden rounded-[30px]">
-        <div className="border-b border-white/10 px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-semibold">Messages</p>
-              <p className="text-xs text-muted-foreground">
-                Live chat over WebSocket with instant delivery
-              </p>
-            </div>
-            <div className="rounded-full bg-sky-500/15 px-2.5 py-1 text-[11px] font-medium text-sky-300">
-              {contacts.length} contacts
-            </div>
-          </div>
+      <div className="sticky top-20 overflow-hidden rounded-xl border border-border bg-background shadow-sm">
+        <div className="flex min-h-[42rem]">
+          <div
+            ref={sidebarRef}
+            style={{ width: sidebarWidth }}
+            className="relative flex flex-col border-r border-border shrink-0"
+          >
+            <div className="border-b border-border p-4">
+              <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'justify-between'}`}>
+                {!isCollapsed && (
+                  <div>
+                    <p className="text-sm font-semibold">Messages</p>
+                  </div>
+                )}
+                <div className="rounded-full bg-sky-500/15 px-2.5 py-1 text-[11px] font-medium text-sky-300">
+                  {contacts.length}
+                </div>
+              </div>
 
-          <div className="glass-surface mt-4 flex h-10 items-center rounded-full px-3">
-            <SearchIcon className="h-4 w-4 text-muted-foreground" />
-            <input
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search contacts"
-              className="w-full bg-transparent px-3 text-sm outline-none placeholder:text-muted-foreground"
-            />
-          </div>
-        </div>
-
-        <div className="grid min-h-[42rem] grid-cols-[132px_minmax(0,1fr)]">
-          <div className="border-r border-white/10 px-2 py-3">
-            <div className="space-y-2">
-              {filteredContacts.length > 0 ? (
-                filteredContacts.map((contact) => {
-                  const isActive = contact.id === activeContact?.id;
-
-                  return (
-                    <button
-                      key={contact.id}
-                      type="button"
-                      onClick={() => setActiveContactId(contact.id)}
-                      className={[
-                        "relative w-full rounded-2xl px-3 py-3 text-left transition",
-                        isActive
-                          ? "bg-white/20 shadow-[inset_0_1px_0_rgba(255,255,255,0.4)]"
-                          : "hover:bg-white/10",
-                      ].join(" ")}
-                    >
-                      <Avatar className="mx-auto h-11 w-11 border border-white/30">
-                        <AvatarImage src={contact.image || "/avatar.png"} />
-                      </Avatar>
-                      <p className="mt-2 truncate text-xs font-medium">
-                        {contact.name || contact.username}
-                      </p>
-                      <p className="truncate text-[11px] text-muted-foreground">
-                        @{contact.username}
-                      </p>
-                      <p className="mt-1 truncate text-[11px] text-muted-foreground/80">
-                        {contact.lastMessage || "Tap to start chatting"}
-                      </p>
-                      {contact.unreadCount > 0 ? (
-                        <span className="absolute right-2 top-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-sky-500 px-1 text-[10px] font-semibold text-white">
-                          {contact.unreadCount > 9 ? "9+" : contact.unreadCount}
-                        </span>
-                      ) : null}
-                    </button>
-                  );
-                })
-              ) : (
-                <div className="rounded-2xl bg-white/10 px-3 py-4 text-center text-xs text-muted-foreground">
-                  No contacts found
+              {!isCollapsed && (
+                <div className="mt-4 flex h-10 items-center rounded-full border border-border bg-muted/50 px-3">
+                  <SearchIcon className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <input
+                    value={search}
+                    onChange={(event) => setSearch(event.target.value)}
+                    placeholder="Search contacts"
+                    className="w-full bg-transparent px-3 text-sm outline-none placeholder:text-muted-foreground"
+                  />
                 </div>
               )}
             </div>
+
+            <div className="flex-1 overflow-y-auto px-2 py-3">
+              <div className="space-y-2">
+                {filteredContacts.length > 0 ? (
+                  filteredContacts.map((contact) => {
+                    const isActive = contact.id === activeContact?.id;
+
+                    return (
+                      <button
+                        key={contact.id}
+                        type="button"
+                        onClick={() => setActiveContactId(contact.id)}
+                        className={[
+                          "relative flex items-center gap-3 w-full rounded-2xl p-2 text-left transition",
+                          isActive ? "bg-muted" : "hover:bg-muted/50",
+                          isCollapsed ? "justify-center" : "",
+                        ].join(" ")}
+                        title={isCollapsed ? (contact.name || contact.username) : undefined}
+                      >
+                        <Avatar className={`border border-border shrink-0 ${isCollapsed ? 'h-10 w-10' : 'h-11 w-11'}`}>
+                          <AvatarImage src={contact.image || "/avatar.png"} />
+                        </Avatar>
+                        {!isCollapsed && (
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-xs font-medium">
+                              {contact.name || contact.username}
+                            </p>
+                            <p className="mt-1 truncate text-[11px] text-muted-foreground/80">
+                              {contact.lastMessage || "Tap to start chatting"}
+                            </p>
+                          </div>
+                        )}
+                        {contact.unreadCount > 0 ? (
+                          <span className={`absolute flex h-5 min-w-5 items-center justify-center rounded-full bg-sky-500 px-1 text-[10px] font-semibold text-white ${isCollapsed ? 'top-1 right-1' : 'top-2 right-2'}`}>
+                            {contact.unreadCount > 9 ? "9+" : contact.unreadCount}
+                          </span>
+                        ) : null}
+                      </button>
+                    );
+                  })
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-10 text-muted-foreground">
+                    <UsersIcon className={`h-8 w-8 opacity-20 ${!isCollapsed && 'mb-3'}`} />
+                    {!isCollapsed && <p className="text-xs">No contacts found</p>}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div
+              className="absolute top-0 right-0 w-1.5 h-full cursor-col-resize hover:bg-primary/50 active:bg-primary z-10 transition-colors"
+              onMouseDown={handleMouseDown}
+            />
           </div>
 
-          <div className="flex min-h-0 flex-col">
+          <div className="flex flex-1 min-w-0 flex-col">
             {activeContact ? (
               <>
-                <div className="flex items-center justify-between border-b border-white/10 px-4 py-4">
+                <div className="flex items-center justify-between border-b border-border px-4 py-4">
                   <div className="flex items-center gap-3">
-                    <Avatar className="h-11 w-11 border border-white/30">
+                    <Avatar className="h-11 w-11 border border-border">
                       <AvatarImage src={activeContact.image || "/avatar.png"} />
                     </Avatar>
                     <div>
@@ -507,15 +474,15 @@ function ChatPanel({ initialState }: ChatPanelProps) {
                               className={[
                                 "max-w-[85%] rounded-3xl px-4 py-3 text-sm",
                                 isMine
-                                  ? "bg-sky-500 text-sky-950"
-                                  : "bg-white/10 text-foreground",
+                                  ? "bg-primary text-primary-foreground"
+                                  : "bg-muted text-foreground",
                               ].join(" ")}
                             >
                               <p className="leading-6">{message.content}</p>
                               <p
                                 className={[
                                   "mt-1 text-[11px]",
-                                  isMine ? "text-sky-950/70" : "text-muted-foreground",
+                                  isMine ? "text-primary-foreground/70" : "text-muted-foreground",
                                 ].join(" ")}
                               >
                                 {formatMessageTime(message.createdAt)}
@@ -526,7 +493,7 @@ function ChatPanel({ initialState }: ChatPanelProps) {
                       })}
                     </div>
                   ) : (
-                    <div className="flex h-full flex-col items-center justify-center rounded-[24px] border border-dashed border-white/15 bg-white/6 px-6 text-center">
+                    <div className="flex h-full flex-col items-center justify-center rounded-[24px] border border-dashed border-border bg-muted/30 px-6 text-center">
                       <MessageCircleMoreIcon className="h-6 w-6 text-sky-400" />
                       <p className="mt-3 text-sm font-medium">No messages yet</p>
                       <p className="mt-1 text-xs text-muted-foreground">
@@ -536,8 +503,8 @@ function ChatPanel({ initialState }: ChatPanelProps) {
                   )}
                 </div>
 
-                <div className="border-t border-white/10 px-4 py-4">
-                  <div className="rounded-[24px] border border-white/15 bg-white/10 p-3">
+                <div className="border-t border-border px-4 py-4">
+                  <div className="rounded-[24px] border border-border bg-muted/50 p-3">
                     <div className="mb-2 flex items-center gap-2 text-xs text-muted-foreground">
                       <MessageCircleMoreIcon className="h-3.5 w-3.5" />
                       Send a new message

@@ -16,8 +16,8 @@ async function Navbar() {
     : [{ notifications: [], unreadCount: 0 }, 0];
 
   return (
-    <nav className="sticky top-0 z-50 w-full px-3 pt-3">
-      <div className="glass-surface mx-auto max-w-7xl rounded-[28px]">
+    <nav className="sticky top-0 z-50 w-full border-b border-border bg-background lg:hidden">
+      <div className="mx-auto max-w-7xl">
         <div className="flex h-16 items-center gap-4 px-4">
           <div className="flex items-center gap-2">
             <LayoutChromeButtons initialUnreadCount={chatUnreadCount} />
@@ -30,16 +30,17 @@ async function Navbar() {
           </div>
 
           <div className="hidden flex-1 md:block">
-            <UserSearch className="relative mx-auto max-w-md" />
           </div>
 
           <DesktopNavbar
             isSignedIn={!!context}
+            userId={context?.dbUser?.id}
             profileHref={profileHref}
             initialNotifications={notifications}
             unreadCount={unreadCount}
           />
           <MobileNavbar
+            userId={context?.dbUser?.id}
             profileHref={profileHref}
             initialNotifications={notifications}
             unreadCount={unreadCount}

@@ -13,6 +13,7 @@ type UserSearchProps = {
 
 function UserSearch({ className }: UserSearchProps) {
   const [query, setQuery] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
   const [results, setResults] = useState<
     {
       id: string;
@@ -24,6 +25,7 @@ function UserSearch({ className }: UserSearchProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const requestIdRef = useRef(0);
 
   const runSearch = (value: string) => {
     const normalizedQuery = value.trim();
@@ -34,8 +36,14 @@ function UserSearch({ className }: UserSearchProps) {
       return;
     }
 
+    const requestId = requestIdRef.current + 1;
+    requestIdRef.current = requestId;
+
     startTransition(async () => {
       const users = await searchUsers(normalizedQuery);
+      if (requestId !== requestIdRef.current) {
+        return;
+      }
       setResults(users);
       setIsOpen(true);
     });
@@ -56,24 +64,27 @@ function UserSearch({ className }: UserSearchProps) {
   }, []);
 
   useEffect(() => {
-    const normalizedQuery = query.trim();
+    const timer = window.setTimeout(() => {
+      setDebouncedQuery(query.trim());
+    }, 280);
 
-    if (normalizedQuery.length < 2) {
+    return () => window.clearTimeout(timer);
+  }, [query]);
+
+  useEffect(() => {
+    if (debouncedQuery.length < 2) {
+      requestIdRef.current += 1;
       setResults([]);
       setIsOpen(false);
       return;
     }
 
-    const timer = window.setTimeout(() => {
-      runSearch(normalizedQuery);
-    }, 180);
-
-    return () => window.clearTimeout(timer);
-  }, [query]);
+    runSearch(debouncedQuery);
+  }, [debouncedQuery]);
 
   return (
     <div ref={containerRef} className={className}>
-      <div className="glass-surface relative flex h-10 items-center rounded-full px-2">
+      <div className="relative flex h-10 items-center rounded-full border border-border bg-muted/50 px-2">
         <SearchIcon className="h-4 w-4 text-muted-foreground" />
         <input
           value={query}
@@ -81,6 +92,7 @@ function UserSearch({ className }: UserSearchProps) {
           onKeyDown={(event) => {
             if (event.key === "Enter") {
               event.preventDefault();
+              setDebouncedQuery(query.trim());
               runSearch(query);
             }
           }}
@@ -97,7 +109,10 @@ function UserSearch({ className }: UserSearchProps) {
           size="sm"
           variant="ghost"
           className="h-8 px-3"
-          onClick={() => runSearch(query)}
+          onClick={() => {
+            setDebouncedQuery(query.trim());
+            runSearch(query);
+          }}
           disabled={query.trim().length < 2 || isPending}
         >
           Search
@@ -105,7 +120,7 @@ function UserSearch({ className }: UserSearchProps) {
       </div>
 
       {isOpen ? (
-        <div className="glass-panel absolute left-0 right-0 top-12 z-50 rounded-[24px] p-2 shadow-2xl">
+        <div className="absolute left-0 right-0 top-12 z-50 rounded-[24px] border border-border bg-popover p-2 shadow-2xl">
           {isPending ? (
             <div className="px-3 py-4 text-sm text-muted-foreground">
               Searching...
@@ -120,9 +135,9 @@ function UserSearch({ className }: UserSearchProps) {
                     setIsOpen(false);
                     setQuery("");
                   }}
-                  className="flex items-center gap-3 rounded-2xl px-3 py-3 transition hover:bg-white/40 dark:hover:bg-white/10"
+                  className="flex items-center gap-3 rounded-2xl px-3 py-3 transition hover:bg-muted/50"
                 >
-                  <Avatar className="h-10 w-10 border border-white/30">
+                  <Avatar className="h-10 w-10 border border-border">
                     <AvatarImage src={user.image || "/avatar.png"} />
                   </Avatar>
                   <div className="min-w-0">

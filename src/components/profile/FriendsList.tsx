@@ -36,7 +36,7 @@ function FriendsList({ friends, viewerUserId }: FriendsListProps) {
         <Card key={friend.id} className="overflow-hidden">
           <CardContent className="flex items-center justify-between gap-4 p-4">
             <Link href={`/profile/${friend.username}`} className="flex min-w-0 items-center gap-3">
-              <Avatar className="h-12 w-12 border border-white/30">
+              <Avatar className="h-12 w-12 border border-border">
                 <AvatarImage src={friend.image || "/avatar.png"} />
               </Avatar>
               <div className="min-w-0">
@@ -58,7 +58,7 @@ function FriendsList({ friends, viewerUserId }: FriendsListProps) {
                 className="min-w-24"
               />
             ) : (
-              <div className="rounded-full border border-white/20 bg-white/20 px-3 py-1 text-xs font-medium text-muted-foreground dark:bg-white/5">
+              <div className="rounded-full border border-border bg-muted/50 px-3 py-1 text-xs font-medium text-muted-foreground">
                 Friend
               </div>
             )}

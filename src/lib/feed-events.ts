@@ -1,4 +1,4 @@
-const encoder = new TextEncoder();
+import { pusherServer } from "./pusher";
 
 type FeedEventPayload =
   | {
@@ -10,32 +10,9 @@ type FeedEventPayload =
       postId: string;
     };
 
-type StreamController = {
-  id: string;
-  enqueue: (chunk: Uint8Array) => void;
-};
-
-const listeners = new Map<string, StreamController>();
-
-function formatSseData(payload: FeedEventPayload) {
-  return encoder.encode(`event: feed\ndata: ${JSON.stringify(payload)}\n\n`);
-}
-
-export function subscribeToFeedEvents(controller: StreamController) {
-  listeners.set(controller.id, controller);
-}
-
-export function unsubscribeFromFeedEvents(controllerId: string) {
-  listeners.delete(controllerId);
-}
-
 export function publishFeedEvent(payload: FeedEventPayload) {
-  const chunk = formatSseData(payload);
-  for (const controller of listeners.values()) {
-    controller.enqueue(chunk);
-  }
-}
-
-export function createHeartbeatChunk() {
-  return encoder.encode(`event: heartbeat\ndata: ok\n\n`);
+  // Fire and forget, catch errors to avoid crashing the server action
+  pusherServer.trigger("feed-channel", "feed-event", payload).catch((error) => {
+    console.error("Failed to publish feed event to Pusher:", error);
+  });
 }

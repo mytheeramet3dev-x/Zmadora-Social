@@ -4,7 +4,7 @@ import EditProfileForm from "@/components/profile/EditProfileForm";
 import StartChatButton from "@/components/chat/StartChatButton";
 import FollowButton from "@/components/profile/FollowButton";
 import { Avatar, AvatarImage } from "@/components/ui/avatar";
-import { Card, CardContent } from "@/components/ui/card";
+
 import { LinkIcon, MapPinIcon, UsersIcon } from "lucide-react";
 import { useState } from "react";
 
@@ -40,12 +40,12 @@ function ProfileHeaderPanel({ profile }: ProfileHeaderPanelProps) {
   });
 
   return (
-    <Card className="overflow-hidden">
+    <div className="border-b border-border bg-background">
       <div className="h-40 bg-[radial-gradient(circle_at_top_left,rgba(125,211,252,0.85),rgba(255,255,255,0.2)_36%,rgba(45,212,191,0.35)_76%)] dark:bg-[radial-gradient(circle_at_top_left,rgba(56,189,248,0.35),rgba(15,23,42,0.2)_36%,rgba(45,212,191,0.18)_76%)]" />
-      <CardContent className="relative px-6 pb-6 pt-0">
+      <div className="relative px-6 pb-6 pt-0">
         <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
           <div className="flex flex-col gap-4 md:flex-row md:items-end">
-            <Avatar className="h-28 w-28 -translate-y-10 border-[6px] border-white/70 shadow-2xl dark:border-slate-950/70">
+            <Avatar className="h-28 w-28 -translate-y-10 border-[6px] border-background shadow-2xl">
               <AvatarImage src={view.image || "/avatar.png"} />
             </Avatar>
 
@@ -111,19 +111,19 @@ function ProfileHeaderPanel({ profile }: ProfileHeaderPanelProps) {
         )}
 
         <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <div className="rounded-2xl border border-white/20 bg-white/35 px-4 py-3 dark:bg-white/5">
+          <div className="rounded-2xl border border-border bg-muted/50 px-4 py-3">
             <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Posts</p>
             <p className="mt-2 text-2xl font-semibold">{profile._count.posts}</p>
           </div>
-          <div className="rounded-2xl border border-white/20 bg-white/35 px-4 py-3 dark:bg-white/5">
+          <div className="rounded-2xl border border-border bg-muted/50 px-4 py-3">
             <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Followers</p>
             <p className="mt-2 text-2xl font-semibold">{view.followers}</p>
           </div>
-          <div className="rounded-2xl border border-white/20 bg-white/35 px-4 py-3 dark:bg-white/5">
+          <div className="rounded-2xl border border-border bg-muted/50 px-4 py-3">
             <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Following</p>
             <p className="mt-2 text-2xl font-semibold">{profile._count.following}</p>
           </div>
-          <div className="rounded-2xl border border-white/20 bg-white/35 px-4 py-3 dark:bg-white/5">
+          <div className="rounded-2xl border border-border bg-muted/50 px-4 py-3">
             <p className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.22em] text-muted-foreground">
               <UsersIcon className="h-3.5 w-3.5" />
               Friends
@@ -153,8 +153,8 @@ function ProfileHeaderPanel({ profile }: ProfileHeaderPanelProps) {
             )}
           </div>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
 
