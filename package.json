@@ -4,9 +4,9 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "dev": "node server.mjs",
+    "dev": "node --env-file=.env server.mjs",
     "build": "next build",
-    "start": "NODE_ENV=production node server.mjs",
+    "start": "NODE_ENV=production node --env-file=.env server.mjs",
     "lint": "next lint"
   },
   "dependencies": {
