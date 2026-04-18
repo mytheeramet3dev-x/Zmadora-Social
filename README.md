@@ -1,84 +1,85 @@
 # Zmadora
 
-Zmadora is a full-stack social media web application built with Next.js App Router, TypeScript, Prisma, PostgreSQL, and Clerk authentication.
+Zmadora is a full-stack social media web application built with Next.js App Router, TypeScript, Prisma, PostgreSQL, Clerk authentication, and Pusher Channels for real-time features.
 
-It includes real-time feed updates, user profiles, follow relationships, likes, comments, replies, notifications, media upload, and direct messaging with WebSocket-based chat delivery.
+It includes real-time feed updates, user profiles, follow relationships, likes, comments, replies, notifications, media upload via Cloudinary, and direct messaging.
 
 ## Highlights
 
-- Full-stack social app using Next.js App Router and TypeScript
-- Clerk-based authentication and protected user flows
-- Create posts with optional image upload
+- Full-stack social app using Next.js 15 App Router and TypeScript
+- Clerk-based authentication with profile sync
+- Create posts with optional image upload (Cloudinary)
 - Like posts, comment, reply to comments, and like comments
 - User profiles with editable profile details and avatar upload
 - Mutual-follow friend system with friend count and friend list
-- Search users by name or username with fuzzy matching
-- Real-time feed updates using SSE
-- Real-time chat using WebSocket
+- Search users by name or username with fuzzy matching (Levenshtein distance)
+- Real-time feed, notification, and chat updates via Pusher Channels (WebSocket)
 - Notification center for follows, likes, comments, replies, and messages
-- Responsive glassmorphism-inspired UI
+- Lazy-loaded comments with "View more" pagination
+- Responsive Twitter-inspired high-contrast UI with dark mode
 
 ## Tech Stack
 
-- Framework: Next.js 15, React 18, TypeScript
-- Styling: Tailwind CSS, Radix UI primitives, custom glassmorphism theme
-- Auth: Clerk
-- Database: PostgreSQL
-- ORM: Prisma
-- Realtime:
-  - Feed and notification updates: SSE
-  - Chat delivery: WebSocket via custom Next server
-- Uploads: local filesystem upload route to `public/uploads`
+| Layer | Technology |
+|---|---|
+| Framework | Next.js 15, React 18, TypeScript |
+| Styling | Tailwind CSS, Radix UI primitives |
+| Auth | Clerk |
+| Database | PostgreSQL (Neon) |
+| ORM | Prisma 7 (with `@prisma/adapter-pg`) |
+| Realtime | **Pusher Channels** (Feed, Notifications, Chat) |
+| Uploads | **Cloudinary** (with local filesystem fallback) |
+| Hosting | Custom Node.js HTTP server (`server.mjs`) |
 
 ## Architecture Summary
 
-This project uses a hybrid architecture:
+- **Server Actions** handle all application mutations and database workflows
+- **Prisma** manages relational data for users, posts, follows, comments, notifications, and direct messages
+- **Pusher Channels** delivers all real-time events — feed updates, notification refreshes, and chat messages — through a single unified WebSocket layer
+- **Route Handlers** are used for the feed pagination API and image upload endpoint
 
-- Server Actions handle most application mutations and database workflows
-- Route Handlers are used for streaming and upload endpoints
-- Prisma manages relational data for users, posts, follows, comments, notifications, and direct messages
-- A custom server (`server.mjs`) enables WebSocket upgrades for chat
-
-The project is full-stack, but it is not a traditional REST API backend. Most business logic lives in protected server-side actions and route handlers.
+All real-time event publishing happens server-side from Server Actions via the Pusher SDK. Clients subscribe to per-user Pusher channels using `pusher-js`.
 
 ## Features
 
 ### Social Features
 
 - Create, view, and delete posts
-- Attach images to posts
+- Attach images to posts via Cloudinary
 - Like and unlike posts
 - Add comments and threaded replies
 - Like and unlike comments
 - Follow and unfollow users
 - Mutual follow detection for friend count and friend list
+- "Who to Follow" suggestions that prioritise users who follow you back
 
 ### Profile Features
 
 - View public profiles
 - Edit name, bio, location, website, and avatar
+- Profile image synced to Clerk on save
 - View posts by profile owner
 - See followers, following, and friends count
 - Open chat directly from a profile
 
-### Realtime Features
+### Realtime Features (Pusher)
 
-- Real-time home feed updates via SSE
-- Real-time notification refresh via SSE
-- Real-time chat delivery via WebSocket
-- Optimistic client-first interactions for chat, likes, comments, follow, and profile editing
+- Real-time home feed updates (new posts, likes, comment counts)
+- Real-time notification refresh
+- Real-time chat message delivery
+- Optimistic UI for chat, likes, comments, follow, and profile editing
 
 ## Project Structure
 
-```text
+```
 src/
-  actions/              Server-side application logic
-  app/                  App Router pages, layout, route handlers, icons
-  components/           UI and feature components
-  lib/                  Prisma, realtime state, event helpers, utilities
+  actions/        Server-side application logic (post, user, chat, notification)
+  app/            App Router pages, layout, API route handlers
+  components/     UI and feature components
+  lib/            Prisma client, Pusher server/client, Cloudinary, utilities
 prisma/
-  schema.prisma         Database schema
-server.mjs              Custom Next server for WebSocket chat
+  schema.prisma   Database schema
+server.mjs        HTTP server (Next.js wrapper)
 ```
 
 ## Local Development
@@ -91,15 +92,27 @@ npm install
 
 ### 2. Set environment variables
 
-Create a `.env` file with the values your app needs. At minimum:
+Create a `.env` file (see `.env.example`):
 
 ```bash
+# Database
 DATABASE_URL=
+
+# Clerk
 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=
 CLERK_SECRET_KEY=
-```
 
-Depending on your Clerk configuration, you may also need your sign-in/sign-up URLs.
+# Pusher Channels
+NEXT_PUBLIC_PUSHER_KEY=
+NEXT_PUBLIC_PUSHER_CLUSTER=
+PUSHER_APP_ID=
+PUSHER_SECRET=
+
+# Cloudinary (optional — falls back to local filesystem if not set)
+CLOUDINARY_CLOUD_NAME=
+CLOUDINARY_API_KEY=
+CLOUDINARY_API_SECRET=
+```
 
 ### 3. Prepare the database
 
@@ -114,61 +127,35 @@ npx prisma db push
 npm run dev
 ```
 
-Important: this project runs through `server.mjs`, not `next dev`, because chat uses a custom WebSocket server.
-
 Open `http://localhost:3000`.
 
 ## Scripts
 
 ```bash
-npm run dev     # Start local development with custom WebSocket server
-npm run build   # Build Next.js app
-npm start       # Start production mode through custom server
-npm run lint    # Run linter
+npm run dev     # Start local development server
+npm run build   # Build Next.js app for production
+npm start       # Start production server
+npm run lint    # Run ESLint
 ```
 
-## Data Model Overview
+## Data Model
 
 Main Prisma models:
 
 - `User`
 - `Post`
 - `Comment`
-- `Like`
-- `CommentLike`
+- `Like` / `CommentLike`
 - `Follows`
 - `Notification`
 - `DirectMessage`
 
-See [docs/architecture.md](./docs/architecture.md) for a deeper breakdown.
+## Known Limitations
 
-## Realtime Notes
-
-- Feed updates use SSE
-- Notifications use SSE
-- Chat uses WebSocket
-- Chat message sending now also goes through WebSocket
-
-See [docs/realtime.md](./docs/realtime.md) for details.
-
-## Deployment Notes
-
-This project is ready for portfolio/demo deployment, but there are a few production tradeoffs:
-
-- Chat WebSocket state is currently in-memory and suitable for a single-instance deployment
-- SSE event hubs are also in-memory
-- Image uploads currently write to `public/uploads`
-- For production scale, replace local upload storage and move realtime fan-out to shared infrastructure such as Redis, Pusher, Ably, or a managed WebSocket layer
-
-See [docs/deployment.md](./docs/deployment.md) for deployment notes.
-
-## Current Limitations
-
-- Uploads are stored locally, not in cloud object storage
-- Realtime infrastructure is not yet multi-instance safe
-- There is no automated test suite yet
-- Mobile chat UX can still be improved further
+- No automated test suite yet
+- Mobile chat UX can be improved further
+- No rate limiting on Server Actions (planned)
 
 ## Resume / Portfolio Summary
 
-Built a full-stack social media web application with real-time feed updates, user profiles, follow system, likes, comments, replies, notifications, media upload, and direct messaging using Next.js App Router, TypeScript, Prisma, PostgreSQL, Clerk, SSE, and WebSocket.
+Built a full-stack social media platform with Next.js 15 App Router, TypeScript, Prisma, PostgreSQL, and Clerk. Implemented real-time feed updates, notifications, and direct messaging via **Pusher Channels** (WebSocket), image uploads via **Cloudinary**, server-side fuzzy user search with Levenshtein distance scoring, optimistic UI, comment pagination, and a responsive Twitter-inspired dark-mode interface.
