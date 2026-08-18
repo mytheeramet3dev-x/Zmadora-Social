@@ -37,15 +37,19 @@ function SidebarLayout({ sidebar, rightRail, children }: SidebarLayoutProps) {
 
   return (
     <div
-      className={["grid grid-cols-1 gap-0", gridClassName].join(" ")}
+      className={["grid grid-cols-1 items-start gap-0", gridClassName].join(" ")}
       style={{ "--chat-width": `${chatWidth}px` } as React.CSSProperties}
     >
-      {isSidebarOpen ? <div className="hidden lg:block">{sidebar}</div> : null}
+      {isSidebarOpen ? (
+        <aside className="hidden lg:block sticky top-0 h-screen shrink-0">
+          {sidebar}
+        </aside>
+      ) : null}
 
       <div className="min-w-0">{children}</div>
 
       {rightRail && isChatOpen ? (
-        <div className="relative hidden xl:block">
+        <aside className="relative hidden xl:block sticky top-0 h-screen shrink-0">
           <div
             role="separator"
             aria-orientation="vertical"
@@ -70,7 +74,7 @@ function SidebarLayout({ sidebar, rightRail, children }: SidebarLayoutProps) {
             }}
           />
           {rightRail}
-        </div>
+        </aside>
       ) : null}
     </div>
   );

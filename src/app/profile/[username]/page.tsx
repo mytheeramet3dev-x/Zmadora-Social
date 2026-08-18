@@ -59,14 +59,14 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
             ...post,
             author: {
               ...post.author,
-              bio: profile.bio,
-              location: profile.location,
-              website: profile.website,
+              bio: post.author.bio ?? (post.author.id === profile.id ? profile.bio : null),
+              location: post.author.location ?? (post.author.id === profile.id ? profile.location : null),
+              website: post.author.website ?? (post.author.id === profile.id ? profile.website : null),
               stats: {
-                followers: profile._count.followers,
-                posts: profile._count.posts,
+                followers: post.author._count?.followers ?? profile._count.followers,
+                posts: post.author._count?.posts ?? profile._count.posts,
               },
-              isFollowing: profile.isFollowing,
+              isFollowing: post.author.id === profile.id ? profile.isFollowing : false,
             },
           }))}
           viewerUserId={profile.viewerUserId}

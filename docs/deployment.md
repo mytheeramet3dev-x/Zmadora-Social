@@ -12,18 +12,22 @@ It is not yet fully hardened for multi-instance production scale.
 
 ## Important Deployment Facts
 
-### 1. Custom server is required
+### 1. Standard Next.js deployment
 
-This project uses `server.mjs` for WebSocket chat.
+Realtime chat uses Pusher Channels, so the application does not require a
+long-running custom WebSocket server. Vercel can run the Next.js application
+with its standard deployment integration.
 
-That means the app is started with:
+For local development and a traditional Node host, start the app with:
 
 ```bash
 npm run dev
 npm start
 ```
 
-Both scripts route through the custom Node server instead of plain `next dev` / `next start`.
+The scripts use the standard `next dev` and `next start` commands. The legacy
+`server.mjs` wrapper remains available for local experiments but is not used by
+Vercel.
 
 ### 2. Database
 
@@ -50,37 +54,30 @@ CLERK_SECRET_KEY=
 
 ### Realtime infrastructure
 
-- WebSocket socket maps are kept in memory
-- SSE listeners are kept in memory
-- cross-instance fan-out is not implemented yet
+- Pusher Channels provides the WebSocket transport and event fan-out
+- the application does not depend on an in-memory socket map
 
 Implication:
 
-- one instance: fine
-- multiple instances: not yet reliable without shared pub/sub
+- one instance: supported
+- multiple instances: supported by the managed Pusher channel layer
 
 ### Upload storage
 
 Current upload route writes files into:
 
-- `public/uploads`
+- Vercel Blob public storage
 
 Implication:
 
 - local/dev: fine
 - serverless or ephemeral filesystem: not ideal
 
-Recommended upgrade:
-
-- Cloudinary
-- S3
-- UploadThing
-- Supabase Storage
+Vercel Blob is already configured. Use a private object-storage strategy later
+if the product requires access-controlled media instead of public URLs.
 
 ## Good Next Steps Before Production
 
-1. Move uploads to external object storage
-2. Replace in-memory realtime fan-out with Redis/pub-sub or a managed service
-3. Add automated tests
-4. Add monitoring / logging / error tracking
-5. Review security and rate limiting for upload and chat endpoints
+1. Add automated tests
+2. Add monitoring / logging / error tracking
+3. Review security and rate limiting for upload and chat endpoints

@@ -75,10 +75,22 @@ const postSnapshotInclude = {
       userId: true,
     },
   },
+  bookmarks: {
+    select: {
+      userId: true,
+    },
+  },
+  reposts: {
+    select: {
+      userId: true,
+    },
+  },
   _count: {
     select: {
       likes: true,
       comments: true,
+      bookmarks: true,
+      reposts: true,
     },
   },
 } as const;
@@ -144,9 +156,17 @@ type FeedPostRecord = {
   likes: {
     userId: string;
   }[];
+  bookmarks?: {
+    userId: string;
+  }[];
+  reposts?: {
+    userId: string;
+  }[];
   _count: {
     likes: number;
     comments: number;
+    bookmarks?: number;
+    reposts?: number;
   };
 };
 
@@ -260,10 +280,22 @@ async function getFeedPage({
           userId: true,
         },
       },
+      bookmarks: {
+        select: {
+          userId: true,
+        },
+      },
+      reposts: {
+        select: {
+          userId: true,
+        },
+      },
       _count: {
         select: {
           likes: true,
           comments: true,
+          bookmarks: true,
+          reposts: true,
         },
       },
     },
@@ -320,8 +352,8 @@ export async function getPosts() {
     const { posts } = await getFeedPage();
     return posts;
   } catch (error) {
-    console.log("Error in getPosts", error);
-    throw new Error("Failed to fetch posts");
+    console.error("Error in getPosts:", error);
+    return [];
   }
 }
 
@@ -329,8 +361,8 @@ export async function getPostsPage(cursor?: string | null) {
   try {
     return await getFeedPage({ cursor });
   } catch (error) {
-    console.log("Error in getPostsPage", error);
-    throw new Error("Failed to fetch more posts");
+    console.error("Error in getPostsPage:", error);
+    return { posts: [], nextCursor: null };
   }
 }
 
@@ -416,6 +448,171 @@ export async function toggleLike(postId: string) {
   } catch (error) {
     console.error("Failed to toggle like:", error);
     return { success: false, error: "Failed to toggle like" };
+  }
+}
+
+export async function toggleBookmark(postId: string) {
+  try {
+    const userId = await getDbUserId();
+    if (!userId) {
+      return { success: false, error: "Sign in required" };
+    }
+
+    const existingBookmark = await prisma.bookmark.findUnique({
+      where: {
+        userId_postId: {
+          userId,
+          postId,
+        },
+      },
+    });
+
+    const post = await prisma.post.findUnique({
+      where: { id: postId },
+      select: {
+        authorId: true,
+      },
+    });
+
+    if (!post) throw new Error("Post not found");
+
+    if (existingBookmark) {
+      await prisma.bookmark.delete({
+        where: {
+          userId_postId: {
+            userId,
+            postId,
+          },
+        },
+      });
+    } else {
+      await prisma.$transaction([
+        prisma.bookmark.create({
+          data: {
+            userId,
+            postId,
+          },
+        }),
+        ...(post.authorId !== userId
+          ? [
+              prisma.notification.create({
+                data: {
+                  type: "BOOKMARK",
+                  userId: post.authorId,
+                  creatorId: userId,
+                  postId,
+                },
+              }),
+            ]
+          : []),
+      ]);
+
+      if (post.authorId !== userId) {
+        publishNotificationEvent(post.authorId, {
+          type: "notifications_changed",
+        });
+      }
+    }
+
+    const postSnapshot = await getPostSnapshot(postId);
+    if (postSnapshot) {
+      publishFeedEvent({
+        type: "post_updated",
+        post: postSnapshot,
+      });
+    }
+
+    return { success: true, isBookmarked: !existingBookmark };
+  } catch (error) {
+    console.error("Failed to toggle bookmark:", error);
+    return { success: false, error: "Failed to toggle bookmark" };
+  }
+}
+
+export async function toggleRepost(postId: string) {
+  try {
+    const userId = await getDbUserId();
+    if (!userId) {
+      return { success: false, error: "Sign in required" };
+    }
+
+    const existingRepost = await prisma.repost.findUnique({
+      where: {
+        userId_postId: {
+          userId,
+          postId,
+        },
+      },
+    });
+
+    const post = await prisma.post.findUnique({
+      where: { id: postId },
+      select: {
+        authorId: true,
+      },
+    });
+
+    if (!post) throw new Error("Post not found");
+
+    if (existingRepost) {
+      await prisma.repost.delete({
+        where: {
+          userId_postId: {
+            userId,
+            postId,
+          },
+        },
+      });
+    } else {
+      await prisma.$transaction([
+        prisma.repost.create({
+          data: {
+            userId,
+            postId,
+          },
+        }),
+        ...(post.authorId !== userId
+          ? [
+              prisma.notification.create({
+                data: {
+                  type: "REPOST",
+                  userId: post.authorId,
+                  creatorId: userId,
+                  postId,
+                },
+              }),
+            ]
+          : []),
+      ]);
+
+      if (post.authorId !== userId) {
+        publishNotificationEvent(post.authorId, {
+          type: "notifications_changed",
+        });
+      }
+    }
+
+    revalidatePath("/");
+    const currentUser = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { username: true },
+    });
+    if (currentUser?.username) {
+      revalidatePath(`/profile/${currentUser.username}`);
+    }
+
+    const postSnapshot = await getPostSnapshot(postId);
+    if (postSnapshot) {
+      publishFeedEvent({
+        type: "post_updated",
+        post: postSnapshot,
+      });
+    }
+
+    return { success: true, isReposted: !existingRepost };
+  } catch (error) {
+    console.error("Failed to toggle repost:", error);
+    return { success: false, error: "Failed to toggle repost" };
   }
 }
 

@@ -16,7 +16,7 @@ async function Navbar() {
     : [{ notifications: [], unreadCount: 0 }, 0];
 
   return (
-    <nav className="sticky top-0 z-50 w-full border-b border-border bg-background lg:hidden">
+    <nav className="sticky top-0 z-50 w-full border-b border-white/10 bg-background/60 backdrop-blur-xl lg:hidden">
       <div className="mx-auto max-w-7xl">
         <div className="flex h-16 items-center gap-4 px-4">
           <div className="flex items-center gap-2">

@@ -216,17 +216,30 @@ function FeedList({
     <div className="divide-y divide-border">
       {posts.map((post) => (
         <PostCard
-          key={`${post.id}:${post._count.likes}:${post._count.comments}`}
+          key={post.id}
           post={post}
           viewerUserId={viewerUserId}
         />
       ))}
 
-      <div ref={loadMoreRef} className="flex min-h-14 items-center justify-center">
+      <div ref={loadMoreRef} className="flex min-h-14 items-center justify-center p-4">
         {isLoadingMore ? (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Loader2Icon className="h-4 w-4 animate-spin" />
-            Loading more posts...
+          <div className="w-full divide-y divide-border">
+            {[1, 2].map((i) => (
+              <div key={i} className="p-4 sm:p-5 animate-pulse">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 sm:h-11 sm:w-11 rounded-full bg-muted shrink-0" />
+                  <div className="space-y-2 flex-1">
+                    <div className="h-3.5 w-32 rounded bg-muted" />
+                    <div className="h-2.5 w-20 rounded bg-muted" />
+                  </div>
+                </div>
+                <div className="mt-4 space-y-2">
+                  <div className="h-3 w-full rounded bg-muted" />
+                  <div className="h-3 w-4/5 rounded bg-muted" />
+                </div>
+              </div>
+            ))}
           </div>
         ) : hasMore ? (
           <p className="text-xs text-muted-foreground">Scroll to load more</p>

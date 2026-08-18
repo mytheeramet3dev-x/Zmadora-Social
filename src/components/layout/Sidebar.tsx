@@ -18,10 +18,10 @@ async function Sidebar() {
     ? await Promise.all([getNotifications(), getChatUnreadCount(), getRandomUsers()])
     : [{ notifications: [], unreadCount: 0 }, 0, []];
 
-  const linkClass = "flex items-center justify-center xl:justify-start gap-4 hover:bg-muted/50 xl:rounded-full rounded-2xl p-3 xl:px-4 xl:py-3 transition w-fit text-foreground";
+  const linkClass = "flex items-center justify-center xl:justify-start gap-4 hover:bg-white/10 hover:shadow-[0_0_15px_rgba(255,255,255,0.1)] xl:rounded-full rounded-2xl p-3 xl:px-4 xl:py-3 transition-all duration-300 w-fit text-foreground";
 
   return (
-    <div className="sticky top-0 h-screen flex flex-col py-6 w-full">
+    <div className="h-full flex flex-col py-6 w-full overflow-y-auto no-scrollbar">
       <div className="flex flex-col items-center xl:items-start space-y-6 xl:pl-6 w-full">
         <Link
           href="/"

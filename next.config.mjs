@@ -22,8 +22,17 @@ const nextConfig = {
         protocol: "https",
         hostname: "**.ufs.sh",
       },
+      {
+        protocol: "https",
+        hostname: "blob.vercel-storage.com",
+      },
+      {
+        protocol: "https",
+        hostname: "**.blob.vercel-storage.com",
+      },
     ],
   },
+  devIndicators: false,
 };
 
 export default nextConfig;

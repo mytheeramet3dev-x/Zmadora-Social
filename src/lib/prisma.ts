@@ -3,7 +3,7 @@ import { PrismaClient } from "@prisma/client";
 import { Pool } from "pg";
 
 const globalForPrisma = globalThis as unknown as {
-  socialPrismaV2: PrismaClient | undefined;
+  socialPrismaV3: PrismaClient | undefined;
 };
 
 const connectionString = process.env.DATABASE_URL;
@@ -24,13 +24,13 @@ function createPrismaClient() {
   });
 }
 
-export const prisma = globalForPrisma.socialPrismaV2 ?? createPrismaClient();
+export const prisma = globalForPrisma.socialPrismaV3 ?? createPrismaClient();
 
 export function getPrismaClient() {
-  return globalForPrisma.socialPrismaV2 ?? prisma;
+  return globalForPrisma.socialPrismaV3 ?? prisma;
 }
 
 if (process.env.NODE_ENV !== "production") {
-  globalForPrisma.socialPrismaV2 = prisma;
+  globalForPrisma.socialPrismaV3 = prisma;
 }
 export default prisma;

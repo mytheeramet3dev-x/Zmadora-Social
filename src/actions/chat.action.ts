@@ -317,6 +317,34 @@ export async function getChatState(activeContactId?: string | null) {
   }
 }
 
+export async function getConversation(contactId: string) {
+  try {
+    const prisma = getPrismaClient();
+    const userId = await getDbUserId();
+
+    if (!userId || !contactId) {
+      return { success: false, messages: [] };
+    }
+
+    await markConversationMessagesAsRead(prisma, contactId, userId);
+    const messages = await findConversationMessages(prisma, userId, contactId);
+
+    return {
+      success: true,
+      messages: messages.map((message) => ({
+        id: message.id,
+        senderId: message.senderId,
+        receiverId: message.receiverId,
+        content: message.content,
+        createdAt: toIso(message.createdAt),
+      })),
+    };
+  } catch (error) {
+    console.error("Failed to get conversation:", error);
+    return { success: false, messages: [] };
+  }
+}
+
 export async function sendDirectMessage(receiverId: string, content: string) {
   try {
     const prisma = getPrismaClient();

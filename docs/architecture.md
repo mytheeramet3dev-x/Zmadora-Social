@@ -137,5 +137,5 @@ The client updates first for responsiveness, while the server confirms and persi
 ### Current tradeoffs
 
 - realtime fan-out is still in-memory
-- uploads are local filesystem based
+- uploads are stored in Vercel Blob and exposed via public blob URLs
 - not yet optimized for multi-instance production deployment

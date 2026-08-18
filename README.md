@@ -2,13 +2,13 @@
 
 Zmadora is a full-stack social media web application built with Next.js App Router, TypeScript, Prisma, PostgreSQL, Clerk authentication, and Pusher Channels for real-time features.
 
-It includes real-time feed updates, user profiles, follow relationships, likes, comments, replies, notifications, media upload via Cloudinary, and direct messaging.
+It includes real-time feed updates, user profiles, follow relationships, likes, comments, replies, notifications, media upload via Vercel Blob, and direct messaging.
 
 ## Highlights
 
 - Full-stack social app using Next.js 15 App Router and TypeScript
 - Clerk-based authentication with profile sync
-- Create posts with optional image upload (Cloudinary)
+- Create posts with optional image upload (Vercel Blob)
 - Like posts, comment, reply to comments, and like comments
 - User profiles with editable profile details and avatar upload
 - Mutual-follow friend system with friend count and friend list
@@ -28,8 +28,8 @@ It includes real-time feed updates, user profiles, follow relationships, likes, 
 | Database | PostgreSQL (Neon) |
 | ORM | Prisma 7 (with `@prisma/adapter-pg`) |
 | Realtime | **Pusher Channels** (Feed, Notifications, Chat) |
-| Uploads | **Cloudinary** (with local filesystem fallback) |
-| Hosting | Custom Node.js HTTP server (`server.mjs`) |
+| Uploads | **Vercel Blob** |
+| Hosting | Vercel or any Next.js-compatible platform |
 
 ## Architecture Summary
 
@@ -45,7 +45,7 @@ All real-time event publishing happens server-side from Server Actions via the P
 ### Social Features
 
 - Create, view, and delete posts
-- Attach images to posts via Cloudinary
+- Attach images to posts via Vercel Blob
 - Like and unlike posts
 - Add comments and threaded replies
 - Like and unlike comments
@@ -76,10 +76,10 @@ src/
   actions/        Server-side application logic (post, user, chat, notification)
   app/            App Router pages, layout, API route handlers
   components/     UI and feature components
-  lib/            Prisma client, Pusher server/client, Cloudinary, utilities
+  lib/            Prisma client, Pusher server/client, Blob, utilities
 prisma/
   schema.prisma   Database schema
-server.mjs        HTTP server (Next.js wrapper)
+server.mjs        Optional local custom-server wrapper (not used by Vercel)
 ```
 
 ## Local Development
@@ -108,10 +108,8 @@ NEXT_PUBLIC_PUSHER_CLUSTER=
 PUSHER_APP_ID=
 PUSHER_SECRET=
 
-# Cloudinary (optional — falls back to local filesystem if not set)
-CLOUDINARY_CLOUD_NAME=
-CLOUDINARY_API_KEY=
-CLOUDINARY_API_SECRET=
+# Vercel Blob
+BLOB_READ_WRITE_TOKEN=
 ```
 
 ### 3. Prepare the database
@@ -128,6 +126,10 @@ npm run dev
 ```
 
 Open `http://localhost:3000`.
+
+For Vercel, import the repository as a Next.js project and add the variables from
+`.env.example` in Project Settings. Vercel runs `next build` and `next start`
+through the standard Next.js integration; `server.mjs` is not used.
 
 ## Scripts
 
@@ -158,4 +160,4 @@ Main Prisma models:
 
 ## Resume / Portfolio Summary
 
-Built a full-stack social media platform with Next.js 15 App Router, TypeScript, Prisma, PostgreSQL, and Clerk. Implemented real-time feed updates, notifications, and direct messaging via **Pusher Channels** (WebSocket), image uploads via **Cloudinary**, server-side fuzzy user search with Levenshtein distance scoring, optimistic UI, comment pagination, and a responsive Twitter-inspired dark-mode interface.
+Built a full-stack social media platform with Next.js 15 App Router, TypeScript, Prisma, PostgreSQL, and Clerk. Implemented real-time feed updates, notifications, and direct messaging via **Pusher Channels** (WebSocket), image uploads via **Vercel Blob**, server-side fuzzy user search with Levenshtein distance scoring, optimistic UI, comment pagination, and a responsive Twitter-inspired dark-mode interface.

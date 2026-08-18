@@ -3,11 +3,14 @@
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import {
   BellIcon,
+  BookmarkIcon,
   CheckCheckIcon,
   HeartIcon,
   MessageCircleIcon,
   MessageCircleMoreIcon,
   MessageSquareReplyIcon,
+  PhoneIcon,
+  Repeat2Icon,
   UserPlusIcon,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -22,7 +25,7 @@ import { pusherClient } from "@/lib/pusher-client";
 
 type NotificationItem = {
   id: string;
-  type: "LIKE" | "COMMENT" | "FOLLOW" | "COMMENT_LIKE" | "REPLY" | "MESSAGE";
+  type: "LIKE" | "COMMENT" | "FOLLOW" | "COMMENT_LIKE" | "REPLY" | "MESSAGE" | "MISSED_CALL" | "REPOST" | "BOOKMARK";
   read: boolean;
   createdAt: string | Date;
   creator: {
@@ -100,6 +103,27 @@ function getNotificationCopy(notification: NotificationItem) {
         accent: "text-sky-500",
         title: `${actor} sent you a message`,
         body: notification.message?.content || "Open chat to continue the conversation.",
+      };
+    case "MISSED_CALL":
+      return {
+        icon: PhoneIcon,
+        accent: "text-orange-500",
+        title: `Missed call from ${actor}`,
+        body: "They tried to reach you.",
+      };
+    case "REPOST":
+      return {
+        icon: Repeat2Icon,
+        accent: "text-emerald-500",
+        title: `${actor} reposted your post`,
+        body: notification.post?.content || "Your post is being shared.",
+      };
+    case "BOOKMARK":
+      return {
+        icon: BookmarkIcon,
+        accent: "text-amber-500",
+        title: `${actor} saved your post`,
+        body: notification.post?.content || "They added your post to favorites.",
       };
   }
 }

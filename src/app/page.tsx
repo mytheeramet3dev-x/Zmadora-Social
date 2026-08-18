@@ -7,6 +7,8 @@ import FeedSkeleton from "@/components/feed/FeedSkeleton";
 import { SignedIn, SignedOut } from "@clerk/nextjs";
 import { Suspense } from "react";
 
+export const dynamic = "force-dynamic";
+
 async function HomeFeed() {
   const [{ posts, nextCursor }, viewerUserId] = await Promise.all([
     getPostsPage(),

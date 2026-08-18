@@ -44,6 +44,7 @@ function UserQuickActions({ user, viewerUserId, children }: UserQuickActionsProp
   const { openChat } = useLayoutChrome();
   const [open, setOpen] = useState(false);
   const [isFollowing, setIsFollowing] = useState(user.isFollowing ?? false);
+  const [followersCount, setFollowersCount] = useState(user.stats?.followers ?? 0);
   const [isPending, startTransition] = useTransition();
 
   const isOwnProfile = viewerUserId === user.id;
@@ -56,17 +57,23 @@ function UserQuickActions({ user, viewerUserId, children }: UserQuickActionsProp
     }
 
     const nextState = !isFollowing;
+    const prevFollowers = followersCount;
     setIsFollowing(nextState);
+    setFollowersCount((prev) => Math.max(0, prev + (nextState ? 1 : -1)));
 
     startTransition(async () => {
       const result = await toggleFollow(user.id);
 
       if (!result?.success) {
         setIsFollowing(!nextState);
+        setFollowersCount(prevFollowers);
         toast.error(result?.error || "Could not update follow status");
         return;
       }
 
+      if (typeof result.followerCount === "number") {
+        setFollowersCount(result.followerCount);
+      }
       setIsFollowing(result.isFollowing ?? nextState);
       toast.success(
         (result.isFollowing ?? nextState)
@@ -151,7 +158,7 @@ function UserQuickActions({ user, viewerUserId, children }: UserQuickActionsProp
                 <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
                   Followers
                 </p>
-                <p className="mt-1 text-sm font-semibold text-foreground">{user.stats.followers}</p>
+                <p className="mt-1 text-sm font-semibold text-foreground">{followersCount}</p>
               </div>
             </div>
           ) : null}

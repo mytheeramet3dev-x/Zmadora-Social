@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import PostCard from "@/components/feed/PostCard";
+import { pusherClient } from "@/lib/pusher-client";
 
 type ProfileFeedListProps = {
   profileUserId: string;
@@ -36,6 +37,17 @@ type ProfileFeedListProps = {
     likes: {
       userId: string;
     }[];
+    bookmarks?: {
+      userId: string;
+    }[];
+    reposts?: {
+      userId: string;
+    }[];
+    repostedBy?: {
+      id: string;
+      name: string | null;
+      username: string;
+    } | null;
     comments: {
       id: string;
       content: string;
@@ -67,37 +79,63 @@ type ProfileFeedListProps = {
     _count: {
       likes: number;
       comments: number;
+      bookmarks?: number;
+      reposts?: number;
     };
   }[];
-  viewerUserId?: string | null;
+  viewerUserId: string | null;
 };
 
-type IncomingPost = ProfileFeedListProps["initialPosts"][number];
 type NormalizedPost = ReturnType<typeof normalizeProfilePost>;
 
-function normalizeProfilePost(post: IncomingPost, profileMeta: ProfileFeedListProps["profileMeta"]) {
+function normalizeProfilePost(
+  post: any,
+  profileMeta: ProfileFeedListProps["profileMeta"]
+) {
+  const likes = post.likes || [];
+  const bookmarks = post.bookmarks || [];
+  const reposts = post.reposts || [];
+  const comments = post.comments || [];
+
   return {
     ...post,
+    id: post.id,
+    content: post.content,
+    image: post.image,
     createdAt: new Date(post.createdAt),
+    authorId: post.authorId,
+    repostedBy: post.repostedBy ?? null,
     author: {
-      ...post.author,
-      bio: profileMeta.bio,
-      location: profileMeta.location,
-      website: profileMeta.website,
+      id: post.author.id,
+      name: post.author.name,
+      username: post.author.username,
+      image: post.author.image,
+      bio: post.author.bio ?? profileMeta.bio,
+      location: post.author.location ?? profileMeta.location,
+      website: post.author.website ?? profileMeta.website,
       stats: {
-        followers: profileMeta.followers,
-        posts: profileMeta.posts,
+        followers: post.author.stats?.followers ?? post.author._count?.followers ?? profileMeta.followers,
+        posts: post.author.stats?.posts ?? post.author._count?.posts ?? profileMeta.posts,
       },
-      isFollowing: profileMeta.isFollowing,
+      isFollowing: post.author.id === profileMeta.bio ? profileMeta.isFollowing : (post.author.isFollowing ?? false),
     },
-    comments: post.comments.map((comment) => ({
+    likes,
+    bookmarks,
+    reposts,
+    comments: comments.map((comment: any) => ({
       ...comment,
       createdAt: new Date(comment.createdAt),
-      replies: comment.replies?.map((reply) => ({
+      replies: comment.replies?.map((reply: any) => ({
         ...reply,
         createdAt: new Date(reply.createdAt),
       })),
     })),
+    _count: {
+      likes: post._count?.likes ?? likes.length,
+      comments: post._count?.comments ?? comments.length,
+      bookmarks: post._count?.bookmarks ?? bookmarks.length,
+      reposts: post._count?.reposts ?? reposts.length,
+    },
   };
 }
 
@@ -116,25 +154,15 @@ function ProfileFeedList({
   }, [initialPosts, profileMeta]);
 
   useEffect(() => {
-    const eventSource = new EventSource("/api/feed/stream");
+    const channel = pusherClient.subscribe("feed-channel");
 
-    const handleFeedEvent = (event: MessageEvent<string>) => {
-      const payload = JSON.parse(event.data) as
-        | {
-            type: "post_created" | "post_updated";
-            post: IncomingPost;
-          }
-        | {
-            type: "post_deleted";
-            postId: string;
-          };
-
+    const handleFeedEvent = (payload: any) => {
       if (payload.type === "post_deleted") {
         setPosts((current) => current.filter((post) => post.id !== payload.postId));
         return;
       }
 
-      if (payload.post.authorId !== profileUserId) {
+      if (payload.post?.authorId !== profileUserId) {
         return;
       }
 
@@ -152,17 +180,17 @@ function ProfileFeedList({
       });
     };
 
-    eventSource.addEventListener("feed", handleFeedEvent as EventListener);
+    channel.bind("feed-event", handleFeedEvent);
 
     return () => {
-      eventSource.removeEventListener("feed", handleFeedEvent as EventListener);
-      eventSource.close();
+      channel.unbind("feed-event", handleFeedEvent);
+      pusherClient.unsubscribe("feed-channel");
     };
   }, [profileMeta, profileUserId]);
 
   if (posts.length === 0) {
     return (
-      <div className="glass-panel rounded-[28px] p-8 text-center">
+      <div className="rounded-2xl p-8 text-center border border-border bg-muted/20">
         <p className="text-lg font-medium">No posts yet</p>
         <p className="mt-2 text-sm text-muted-foreground">
           Posts from this user will show up here once they share something.
@@ -172,10 +200,10 @@ function ProfileFeedList({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="divide-y divide-border rounded-2xl border border-border overflow-hidden bg-card/20">
       {posts.map((post) => (
         <PostCard
-          key={`${post.id}:${post._count.likes}:${post._count.comments}`}
+          key={post.id}
           post={post}
           viewerUserId={viewerUserId}
         />

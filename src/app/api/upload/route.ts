@@ -1,11 +1,6 @@
 import { auth } from "@clerk/nextjs/server";
-import { promises as fs } from "fs";
-import path from "path";
 import { NextResponse } from "next/server";
-import {
-  isCloudinaryConfigured,
-  uploadImageToCloudinary,
-} from "@/lib/cloudinary";
+import { uploadImageToBlob } from "@/lib/blob";
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
 const ACCEPTED_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
@@ -37,6 +32,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    if (!process.env.BLOB_READ_WRITE_TOKEN) {
+      return NextResponse.json(
+        { error: "Vercel Blob is not configured. Set BLOB_READ_WRITE_TOKEN." },
+        { status: 500 }
+      );
+    }
+
     const formData = await request.formData();
     const file = formData.get("file");
 
@@ -53,26 +55,12 @@ export async function POST(request: Request) {
     }
 
     const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
-
-    if (isCloudinaryConfigured) {
-      const url = await uploadImageToCloudinary(buffer);
-      return NextResponse.json({ url });
-    }
-
+    const blob = new Blob([bytes], { type: file.type });
     const extension = getFileExtension(file);
     const fileName = `${Date.now()}-${crypto.randomUUID()}.${extension}`;
-    const uploadDirectory = path.join(process.cwd(), "public", "uploads");
-    const filePath = path.join(uploadDirectory, fileName);
+    const url = await uploadImageToBlob(blob, fileName);
 
-    await fs.mkdir(uploadDirectory, { recursive: true });
-    await fs.writeFile(filePath, buffer);
-
-    return NextResponse.json({
-      url: `/uploads/${fileName}`,
-      warning:
-        "Cloudinary is not configured, so the file was stored locally instead.",
-    });
+    return NextResponse.json({ url });
   } catch (error) {
     console.error("Upload failed:", error);
     return NextResponse.json({ error: "Failed to upload image" }, { status: 500 });

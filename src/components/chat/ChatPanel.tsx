@@ -1,6 +1,6 @@
 "use client";
 
-import { getChatState, sendDirectMessage } from "@/actions/chat.action";
+import { getChatState, getConversation, sendDirectMessage } from "@/actions/chat.action";
 import { useLayoutChrome } from "@/components/layout/LayoutChromeContext";
 import { Avatar, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,7 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import toast from "react-hot-toast";
 import { pusherClient } from "@/lib/pusher-client";
+import { useCall } from "./CallProvider";
 
 type ChatContact = {
   id: string;
@@ -88,6 +89,7 @@ function emitUnreadCount(count: number) {
 
 function ChatPanel({ initialState }: ChatPanelProps) {
   useLayoutChrome();
+  const { startCall } = useCall();
   const [contacts, setContacts] = useState(initialState.contacts);
   const [viewerUserId, setViewerUserId] = useState(initialState.viewerUserId);
   const [activeContactId, setActiveContactId] = useState<string | null>(
@@ -154,17 +156,21 @@ function ChatPanel({ initialState }: ChatPanelProps) {
 
   const isCollapsed = sidebarWidth <= 100;
 
-  const syncChatState = useCallback(async (contactId?: string | null) => {
-    const nextState = await getChatState(contactId ?? activeContactIdRef.current);
-    setViewerUserId(nextState.viewerUserId);
-    setContacts(sortContacts(nextState.contacts));
-    setActiveContactId(nextState.activeContactId);
-    activeContactIdRef.current = nextState.activeContactId;
+  const handleSelectContact = useCallback(async (contactId: string) => {
+    setActiveContactId(contactId);
+    activeContactIdRef.current = contactId;
 
-    if (nextState.activeContactId) {
+    // Immediately clear unread count for this contact locally
+    setContacts((current) =>
+      current.map((c) => (c.id === contactId ? { ...c, unreadCount: 0 } : c))
+    );
+
+    // Fetch conversation messages in background if not already loaded or to refresh
+    const res = await getConversation(contactId);
+    if (res.success && activeContactIdRef.current === contactId) {
       setMessagesByContact((current) => ({
         ...current,
-        [nextState.activeContactId as string]: nextState.messages,
+        [contactId]: res.messages,
       }));
     }
   }, []);
@@ -191,12 +197,6 @@ function ChatPanel({ initialState }: ChatPanelProps) {
   useEffect(() => {
     emitUnreadCount(contacts.reduce((sum, contact) => sum + contact.unreadCount, 0));
   }, [contacts]);
-
-  useEffect(() => {
-    if (!activeContactId) return;
-    activeContactIdRef.current = activeContactId;
-    void syncChatState(activeContactId);
-  }, [activeContactId, syncChatState]);
 
   useEffect(() => {
     if (!viewerUserId) return;
@@ -240,7 +240,8 @@ function ChatPanel({ initialState }: ChatPanelProps) {
       });
 
       if (shouldAppendToOpenThread) {
-        void syncChatState(incomingContactId);
+        // Just mark read on server in background
+        void getConversation(incomingContactId);
       }
     };
 
@@ -250,7 +251,7 @@ function ChatPanel({ initialState }: ChatPanelProps) {
       channel.unbind("chat-event", handleChatEvent);
       pusherClient.unsubscribe(`user-${viewerUserId}`);
     };
-  }, [syncChatState, viewerUserId]);
+  }, [viewerUserId]);
 
   useEffect(() => {
     const handleOpenChat = (event: Event) => {
@@ -278,16 +279,14 @@ function ChatPanel({ initialState }: ChatPanelProps) {
               ...current,
             ]);
       });
-      setActiveContactId(incomingContact.id);
-      activeContactIdRef.current = incomingContact.id;
       setSearch("");
-      void syncChatState(incomingContact.id);
+      void handleSelectContact(incomingContact.id);
     };
 
     window.addEventListener("social:open-chat", handleOpenChat as EventListener);
     return () =>
       window.removeEventListener("social:open-chat", handleOpenChat as EventListener);
-  }, [syncChatState]);
+  }, [handleSelectContact]);
 
   const handleSend = () => {
     const normalized = draft.trim();
@@ -302,6 +301,7 @@ function ChatPanel({ initialState }: ChatPanelProps) {
       createdAt: new Date().toISOString(),
     };
 
+    const previousContacts = contacts;
     setMessagesByContact((current) => ({
       ...current,
       [activeContactId]: [...(current[activeContactId] || []), optimisticMessage],
@@ -324,13 +324,14 @@ function ChatPanel({ initialState }: ChatPanelProps) {
     startSendTransition(async () => {
       const result = await sendDirectMessage(activeContactId, normalized);
       if (!result.success) {
-        // Rollback optimistic message on error
+        // Rollback optimistic message AND contacts on error
         setMessagesByContact((current) => ({
           ...current,
           [activeContactId]: (current[activeContactId] || []).filter(
             (message) => message.id !== clientMessageId
           ),
         }));
+        setContacts(previousContacts);
         toast.error(result.error || "Failed to send message");
         return;
       }
@@ -347,13 +348,13 @@ function ChatPanel({ initialState }: ChatPanelProps) {
   };
 
   return (
-    <div className="hidden xl:block">
-      <div className="sticky top-20 overflow-hidden rounded-xl border border-border bg-background shadow-sm">
-        <div className="flex min-h-[42rem]">
+    <div className="hidden xl:block h-full py-4 pl-3">
+      <div className="h-[calc(100vh-2rem)] overflow-hidden rounded-2xl border border-border bg-background shadow-sm flex flex-col">
+        <div className="flex flex-1 min-h-0">
           <div
             ref={sidebarRef}
             style={{ width: sidebarWidth }}
-            className="relative flex flex-col border-r border-border shrink-0"
+            className="relative flex flex-col border-r border-border shrink-0 h-full"
           >
             <div className="border-b border-border p-4">
               <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'justify-between'}`}>
@@ -390,7 +391,7 @@ function ChatPanel({ initialState }: ChatPanelProps) {
                       <button
                         key={contact.id}
                         type="button"
-                        onClick={() => setActiveContactId(contact.id)}
+                        onClick={() => handleSelectContact(contact.id)}
                         className={[
                           "relative flex items-center gap-3 w-full rounded-2xl p-2 text-left transition",
                           isActive ? "bg-muted" : "hover:bg-muted/50",
@@ -450,10 +451,20 @@ function ChatPanel({ initialState }: ChatPanelProps) {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Button variant="ghost" size="icon" className="h-9 w-9">
+                    <Button 
+                      onClick={() => startCall(activeContact.id, "AUDIO")}
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-9 w-9"
+                    >
                       <PhoneIcon className="h-4 w-4" />
                     </Button>
-                    <Button variant="ghost" size="icon" className="h-9 w-9">
+                    <Button 
+                      onClick={() => startCall(activeContact.id, "VIDEO")}
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-9 w-9"
+                    >
                       <VideoIcon className="h-4 w-4" />
                     </Button>
                   </div>

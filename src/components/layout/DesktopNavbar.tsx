@@ -11,7 +11,7 @@ type DesktopNavbarProps = {
   profileHref: string;
   initialNotifications: {
     id: string;
-    type: "LIKE" | "COMMENT" | "FOLLOW" | "COMMENT_LIKE" | "REPLY" | "MESSAGE";
+    type: "LIKE" | "COMMENT" | "FOLLOW" | "COMMENT_LIKE" | "REPLY" | "MESSAGE" | "MISSED_CALL" | "REPOST" | "BOOKMARK";
     read: boolean;
     createdAt: string | Date;
     creator: {

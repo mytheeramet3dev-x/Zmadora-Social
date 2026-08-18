@@ -42,6 +42,22 @@ const profileCommentInclude = {
   },
 } as const;
 
+function isTrustedProfileImageUrl(rawUrl: string) {
+  try {
+    const imageUrl = new URL(rawUrl);
+    return (
+      imageUrl.protocol === "https:" &&
+      (
+        imageUrl.hostname === "res.cloudinary.com" ||
+        imageUrl.hostname === "blob.vercel-storage.com" ||
+        imageUrl.hostname.endsWith(".blob.vercel-storage.com")
+      )
+    );
+  } catch {
+    return false;
+  }
+}
+
 export const getCurrentUserContext = cache(async () => {
   const clerkUser = await currentUser();
 
@@ -129,9 +145,28 @@ export async function getProfileByUsername(username: string) {
                 name: true,
                 username: true,
                 image: true,
+                bio: true,
+                location: true,
+                website: true,
+                _count: {
+                  select: {
+                    followers: true,
+                    posts: true,
+                  },
+                },
               },
             },
             likes: {
+              select: {
+                userId: true,
+              },
+            },
+            bookmarks: {
+              select: {
+                userId: true,
+              },
+            },
+            reposts: {
               select: {
                 userId: true,
               },
@@ -149,6 +184,8 @@ export async function getProfileByUsername(username: string) {
               select: {
                 likes: true,
                 comments: true,
+                bookmarks: true,
+                reposts: true,
               },
             },
           },
@@ -164,7 +201,7 @@ export async function getProfileByUsername(username: string) {
 
     const isOwnProfile = viewerId === user.id;
 
-    const [follow, friends] = await Promise.all([
+    const [follow, friends, userReposts] = await Promise.all([
       viewerId && !isOwnProfile
         ? prisma.follows.findUnique({
             where: {
@@ -202,6 +239,69 @@ export async function getProfileByUsername(username: string) {
         },
         orderBy: [{ name: "asc" }, { username: "asc" }],
       }),
+      prisma.repost.findMany({
+        where: {
+          userId: user.id,
+        },
+        orderBy: {
+          createdAt: "desc",
+        },
+        include: {
+          post: {
+            include: {
+              author: {
+                select: {
+                  id: true,
+                  name: true,
+                  username: true,
+                  image: true,
+                  bio: true,
+                  location: true,
+                  website: true,
+                  _count: {
+                    select: {
+                      followers: true,
+                      posts: true,
+                    },
+                  },
+                },
+              },
+              likes: {
+                select: {
+                  userId: true,
+                },
+              },
+              bookmarks: {
+                select: {
+                  userId: true,
+                },
+              },
+              reposts: {
+                select: {
+                  userId: true,
+                },
+              },
+              comments: {
+                where: {
+                  parentId: null,
+                },
+                include: profileCommentInclude,
+                orderBy: {
+                  createdAt: "asc",
+                },
+              },
+              _count: {
+                select: {
+                  likes: true,
+                  comments: true,
+                  bookmarks: true,
+                  reposts: true,
+                },
+              },
+            },
+          },
+        },
+      }),
     ]);
 
     const viewerFollowingIds = viewerId && friends.length > 0
@@ -222,8 +322,30 @@ export async function getProfileByUsername(username: string) {
         )
       : new Set<string>();
 
+    const authoredPosts = user.posts.map((post) => ({
+      ...post,
+      repostedBy: null,
+      timelineDate: post.createdAt,
+    }));
+
+    const repostedPosts = userReposts
+      .filter((r) => r.post)
+      .map((r) => ({
+        ...r.post,
+        repostedBy: {
+          id: user.id,
+          name: user.name,
+          username: user.username,
+        },
+        timelineDate: r.createdAt,
+      }));
+
+    const combinedPosts = [...authoredPosts, ...repostedPosts]
+      .sort((a, b) => new Date(b.timelineDate).getTime() - new Date(a.timelineDate).getTime());
+
     return {
       ...user,
+      posts: combinedPosts,
       viewerUserId: viewerId,
       isOwnProfile,
       isFollowing: !!follow,
@@ -609,12 +731,14 @@ export async function updateProfile({
 
       if (image.trim()) {
         try {
-          const imageUrl = new URL(image.trim());
-          if (imageUrl.protocol === "https:" && imageUrl.hostname === "res.cloudinary.com") {
-            const res = await fetch(imageUrl.toString());
+          const imageUrl = image.trim();
+          if (isTrustedProfileImageUrl(imageUrl)) {
+            const res = await fetch(imageUrl);
             if (res.ok) {
               const blob = await res.blob();
-              const file = new File([blob], "profile.jpg", { type: blob.type || "image/jpeg" });
+              const file = new File([blob], "profile.jpg", {
+                type: blob.type || "image/jpeg",
+              });
               await client.users.updateUserProfileImage(clerkId, { file });
             }
           } else {
