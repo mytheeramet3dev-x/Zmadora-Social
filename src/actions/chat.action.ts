@@ -1,7 +1,10 @@
 "use server";
 
-import { Prisma } from "@prisma/client";
-import { getPrismaClient } from "@/lib/prisma";
+import { Prisma, PrismaClient } from "@prisma/client";
+import prisma from "@/lib/prisma";
+
+type TxClient = Omit<PrismaClient, "$connect" | "$disconnect" | "$on" | "$transaction" | "$extends">;
+function getPrismaClient(): PrismaClient { return prisma as PrismaClient; }
 import { publishChatEvent } from "@/lib/chat-events";
 import { publishNotificationEvent } from "@/lib/notification-events";
 import { getDbUserId, getRandomUsers } from "./user.action";
@@ -52,7 +55,7 @@ type ConversationOverviewRow = MessageWithUsers & {
   unreadCount: number;
 };
 
-async function findMessagesForOverview(prisma: ReturnType<typeof getPrismaClient>, userId: string) {
+async function findMessagesForOverview(prisma: TxClient, userId: string) {
   return prisma.$queryRaw<ConversationOverviewRow[]>(Prisma.sql`
     WITH ranked_messages AS (
       SELECT
@@ -117,7 +120,7 @@ async function findMessagesForOverview(prisma: ReturnType<typeof getPrismaClient
 }
 
 async function markConversationMessagesAsRead(
-  prisma: ReturnType<typeof getPrismaClient>,
+  prisma: TxClient,
   fromUserId: string,
   toUserId: string
 ) {
@@ -134,7 +137,7 @@ async function markConversationMessagesAsRead(
 }
 
 async function findConversationMessages(
-  prisma: ReturnType<typeof getPrismaClient>,
+  prisma: TxClient,
   userId: string,
   otherUserId: string
 ) {
@@ -159,7 +162,7 @@ async function findConversationMessages(
 }
 
 async function createMessage(
-  prisma: ReturnType<typeof getPrismaClient>,
+  prisma: TxClient,
   senderId: string,
   receiverId: string,
   content: string
@@ -298,7 +301,7 @@ export async function getChatState(activeContactId?: string | null) {
           : contact
       ),
       activeContactId: resolvedActiveContactId,
-      messages: messages.map((message) => ({
+      messages: messages.map((message: MessageRow) => ({
         id: message.id,
         senderId: message.senderId,
         receiverId: message.receiverId,
@@ -331,7 +334,7 @@ export async function getConversation(contactId: string) {
 
     return {
       success: true,
-      messages: messages.map((message) => ({
+      messages: messages.map((message: MessageRow) => ({
         id: message.id,
         senderId: message.senderId,
         receiverId: message.receiverId,
@@ -382,9 +385,9 @@ export async function sendDirectMessage(receiverId: string, content: string) {
       return { success: false, error: "Sender not found" };
     }
 
-    const [message] = await prisma.$transaction(async (tx) => {
+    const [message] = await prisma.$transaction(async (tx: TxClient) => {
       const createdMessage = await createMessage(
-        tx as ReturnType<typeof getPrismaClient>,
+        tx,
         senderId,
         receiverId,
         normalizedContent

@@ -76,7 +76,7 @@ async function Sidebar() {
             <p className="text-xs font-bold text-muted-foreground mb-4 uppercase tracking-widest px-2 text-center">Who to follow</p>
             {suggestedUsers.length > 0 ? (
               <div className="space-y-3">
-                {suggestedUsers.map((u) => (
+                {suggestedUsers.map((u: { id: string; name: string | null; username: string; image: string | null; isFollowing: boolean }) => (
                   <div key={u.id} className="flex items-center justify-between gap-2 hover:bg-muted/50 p-2 -mx-2 rounded-xl transition w-full">
                     <Link href={`/profile/${u.username}`} className="flex items-center gap-3 min-w-0 flex-1 group">
                       <Avatar className="w-10 h-10 border border-border shrink-0">
