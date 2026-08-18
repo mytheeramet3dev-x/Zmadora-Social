@@ -232,10 +232,16 @@ function NotificationBell({
   return (
     <DropdownMenu.Root onOpenChange={handleOpenChange}>
       <DropdownMenu.Trigger asChild>
-        <Button variant="ghost" className={cn("relative flex items-center gap-4", className)}>
+        <button
+          type="button"
+          className={cn(
+            "relative flex items-center transition-all duration-200 outline-none select-none text-foreground",
+            className || "gap-2 rounded-full p-2 hover:bg-accent text-sm font-medium"
+          )}
+        >
           <div className="relative flex items-center justify-center">
             <BellIcon
-              className={iconClassName || (showLabel ? "w-7 h-7" : "h-4 w-4")}
+              className={iconClassName || (showLabel ? "w-7 h-7" : "w-4 h-4")}
               strokeWidth={2}
             />
             {unreadCount > 0 ? (
@@ -245,7 +251,7 @@ function NotificationBell({
             ) : null}
           </div>
           {showLabel ? <span className={labelClassName}>Notifications</span> : null}
-        </Button>
+        </button>
       </DropdownMenu.Trigger>
 
       <DropdownMenu.Portal>
