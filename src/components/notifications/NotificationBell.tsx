@@ -56,6 +56,7 @@ type NotificationBellProps = {
   className?: string;
   showLabel?: boolean;
   labelClassName?: string;
+  iconClassName?: string;
 };
 
 function getNotificationCopy(notification: NotificationItem) {
@@ -146,6 +147,7 @@ function NotificationBell({
   className,
   showLabel = true,
   labelClassName = "hidden lg:inline",
+  iconClassName,
 }: NotificationBellProps) {
   const router = useRouter();
   const { openChat } = useLayoutChrome();
@@ -230,14 +232,19 @@ function NotificationBell({
   return (
     <DropdownMenu.Root onOpenChange={handleOpenChange}>
       <DropdownMenu.Trigger asChild>
-        <Button variant="ghost" className={cn("relative flex items-center gap-2", className)}>
-          <BellIcon className="h-4 w-4" />
+        <Button variant="ghost" className={cn("relative flex items-center gap-4", className)}>
+          <div className="relative flex items-center justify-center">
+            <BellIcon
+              className={iconClassName || (showLabel ? "w-7 h-7" : "h-4 w-4")}
+              strokeWidth={2}
+            />
+            {unreadCount > 0 ? (
+              <span className="absolute -top-1.5 -right-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-sky-500 px-1 text-[10px] font-semibold text-white shadow-lg">
+                {unreadCount > 9 ? "9+" : unreadCount}
+              </span>
+            ) : null}
+          </div>
           {showLabel ? <span className={labelClassName}>Notifications</span> : null}
-          {unreadCount > 0 ? (
-            <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-sky-500 px-1 text-[10px] font-semibold text-white shadow-lg">
-              {unreadCount > 9 ? "9+" : unreadCount}
-            </span>
-          ) : null}
         </Button>
       </DropdownMenu.Trigger>
 
