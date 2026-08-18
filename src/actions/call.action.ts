@@ -45,10 +45,12 @@ export async function initiateCall(receiverId: string, type: "AUDIO" | "VIDEO") 
     });
 
     const isCallerFollowingReceiver = followRelationship.some(
-      (f) => f.followerId === callerId && f.followingId === receiverId
+      (f: { followerId: string; followingId: string }) =>
+        f.followerId === callerId && f.followingId === receiverId
     );
     const isReceiverFollowingCaller = followRelationship.some(
-      (f) => f.followerId === receiverId && f.followingId === callerId
+      (f: { followerId: string; followingId: string }) =>
+        f.followerId === receiverId && f.followingId === callerId
     );
 
     if (!isCallerFollowingReceiver || !isReceiverFollowingCaller) {
