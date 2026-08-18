@@ -6,19 +6,12 @@ const globalForPrisma = globalThis as unknown as {
   socialPrismaV3: PrismaClient | undefined;
 };
 
-const connectionString = process.env.DATABASE_URL;
-
-if (!connectionString) {
-  throw new Error("DATABASE_URL is not set");
-}
-
-const pool = new Pool({
-  connectionString,
-});
-
-const adapter = new PrismaPg(pool);
-
 function createPrismaClient() {
+  const connectionString = process.env.DATABASE_URL || "postgresql://postgres:postgres@localhost:5432/social";
+  const pool = new Pool({
+    connectionString,
+  });
+  const adapter = new PrismaPg(pool);
   return new PrismaClient({
     adapter,
   });
