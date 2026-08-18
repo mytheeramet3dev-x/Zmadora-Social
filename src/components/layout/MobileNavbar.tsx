@@ -7,6 +7,7 @@ import {
   MoonIcon,
   SunIcon,
   UserIcon,
+  SettingsIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -119,6 +120,16 @@ function MobileNavbar({
                   <Link href={profileHref}>
                     <UserIcon className="w-4 h-4" />
                     Profile
+                  </Link>
+                </Button>
+                <Button
+                  variant="ghost"
+                  className="flex items-center gap-3 justify-start"
+                  asChild
+                >
+                  <Link href="/settings">
+                    <SettingsIcon className="w-4 h-4" />
+                    Settings
                   </Link>
                 </Button>
                 <SignOutButton>

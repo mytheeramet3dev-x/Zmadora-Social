@@ -2,7 +2,7 @@ import { getCurrentUserContext, getRandomUsers } from "@/actions/user.action";
 import { getNotifications } from "@/actions/notification.action";
 import { getChatUnreadCount } from "@/actions/chat.action";
 import Link from "next/link";
-import { HomeIcon, UserIcon, FeatherIcon } from "lucide-react";
+import { HomeIcon, UserIcon, FeatherIcon, SettingsIcon } from "lucide-react";
 import NotificationBell from "@/components/notifications/NotificationBell";
 import UserSearch from "@/components/search/UserSearch";
 import { ModeToggle } from "@/components/layout/ModeToggle";
@@ -55,6 +55,11 @@ async function Sidebar() {
               <Link href={profileHref} className={linkClass}>
                 <UserIcon className="w-7 h-7" strokeWidth={2} />
                 <span className="text-xl font-medium hidden xl:inline">Profile</span>
+              </Link>
+
+              <Link href="/settings" className={linkClass}>
+                <SettingsIcon className="w-7 h-7" strokeWidth={2} />
+                <span className="text-xl font-medium hidden xl:inline">Settings</span>
               </Link>
             </>
           ) : null}
