@@ -1,13 +1,5 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  async rewrites() {
-    return [
-      {
-        source: "/__clerk/:path*",
-        destination: "https://clerk.zmadora-social-w.vercel.app/:path*",
-      },
-    ];
-  },
   images: {
     remotePatterns: [
       {
