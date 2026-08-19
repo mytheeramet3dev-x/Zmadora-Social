@@ -1,6 +1,8 @@
 import { clerkMiddleware } from "@clerk/nextjs/server";
 
-export default clerkMiddleware();
+export default clerkMiddleware({
+  proxyUrl: process.env.NEXT_PUBLIC_CLERK_PROXY_URL || "https://zmadora-social-w.vercel.app/__clerk",
+});
 
 export const config = {
   matcher: [

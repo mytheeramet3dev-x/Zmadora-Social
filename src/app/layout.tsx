@@ -37,7 +37,11 @@ export default function RootLayout({
       <body
         className={`${inter.variable} font-sans antialiased`}
       >
-        <ClerkProvider>
+        <ClerkProvider
+          proxyUrl={process.env.NEXT_PUBLIC_CLERK_PROXY_URL || "https://zmadora-social-w.vercel.app/__clerk"}
+          signInUrl="/sign-in"
+          signUpUrl="/sign-up"
+        >
           <CallProvider>
             <ThemeProvider
               attribute="class"
