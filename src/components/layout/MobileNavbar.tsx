@@ -143,11 +143,9 @@ function MobileNavbar({
                 </SignOutButton>
               </>
             ) : (
-              <SignInButton mode="modal">
-                <Button variant="default" className="w-full">
-                  Sign-In
-                </Button>
-              </SignInButton>
+              <Button variant="default" className="w-full" asChild>
+                <Link href="/sign-in">Sign-In</Link>
+              </Button>
             )}
           </nav>
         </SheetContent>

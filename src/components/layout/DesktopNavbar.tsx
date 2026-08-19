@@ -78,9 +78,9 @@ function DesktopNavbar({
           <UserButton />
         </>
       ) : (
-        <SignInButton mode="modal">
-          <Button variant="default">Sign-In</Button>
-        </SignInButton>
+        <Button variant="default" asChild>
+          <Link href="/sign-in">Sign-In</Link>
+        </Button>
       )}
     </div>
   );

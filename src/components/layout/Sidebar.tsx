@@ -131,12 +131,12 @@ async function Sidebar() {
              <div className="hidden xl:block">
                <ModeToggle />
              </div>
-             <SignInButton mode="modal">
-               <Button variant="default" className="w-12 h-12 xl:w-full rounded-full">
+             <Button variant="default" className="w-12 h-12 xl:w-full rounded-full shadow-lg" asChild>
+               <Link href="/sign-in">
                   <span className="hidden xl:inline">Sign-In</span>
                   <UserIcon className="w-5 h-5 xl:hidden" />
-               </Button>
-             </SignInButton>
+               </Link>
+             </Button>
           </div>
         )}
       </div>
