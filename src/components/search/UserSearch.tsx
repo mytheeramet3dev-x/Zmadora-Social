@@ -102,7 +102,7 @@ function UserSearch({ className }: UserSearchProps) {
             }
           }}
           placeholder="Search users"
-          className="w-full bg-transparent px-3 text-sm outline-none placeholder:text-muted-foreground"
+          className="w-full bg-transparent px-3 text-[16px] md:text-sm outline-none placeholder:text-muted-foreground"
         />
         <Button
           type="button"

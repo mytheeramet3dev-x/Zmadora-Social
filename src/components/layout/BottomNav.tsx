@@ -21,7 +21,7 @@ export default function BottomNav({ profileHref, unreadNotifications, unreadMess
   ];
 
   return (
-    <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-background/90 backdrop-blur-xl border-t border-border flex items-center justify-around h-[60px] pb-safe">
+    <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-background/90 backdrop-blur-xl border-t border-border flex items-center justify-around h-[60px] pb-[env(safe-area-inset-bottom,0px)]">
       {navItems.map((item) => (
         <Link
           key={item.href}

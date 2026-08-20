@@ -6,12 +6,14 @@ import { Avatar, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
+  ArrowLeftIcon,
   MessageCircleMoreIcon,
   PhoneIcon,
   SearchIcon,
   SendHorizonalIcon,
   UsersIcon,
   VideoIcon,
+  XIcon,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import toast from "react-hot-toast";
@@ -88,7 +90,7 @@ function emitUnreadCount(count: number) {
 
 
 function ChatPanel({ initialState }: ChatPanelProps) {
-  useLayoutChrome();
+  const { toggleChat } = useLayoutChrome();
   const { startCall } = useCall();
   const [contacts, setContacts] = useState(initialState.contacts);
   const [viewerUserId, setViewerUserId] = useState(initialState.viewerUserId);
@@ -351,34 +353,44 @@ function ChatPanel({ initialState }: ChatPanelProps) {
     <div className="h-full xl:py-4 xl:pl-3">
       <div className="h-full xl:h-[calc(100vh-2rem)] overflow-hidden xl:rounded-2xl xl:border border-border bg-background shadow-sm flex flex-col">
         <div className="flex flex-1 min-h-0">
+          {/* Contacts Sidebar Column */}
           <div
             ref={sidebarRef}
-            style={{ width: sidebarWidth }}
-            className="relative flex flex-col border-r border-border shrink-0 h-full"
+            style={{ width: undefined }}
+            className={`relative flex-col border-r border-border shrink-0 h-full ${
+              activeContact ? "hidden xl:flex" : "flex w-full"
+            } xl:w-[var(--sidebar-w,80px)]`}
           >
             <div className="border-b border-border p-4">
-              <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'justify-between'}`}>
-                {!isCollapsed && (
-                  <div>
-                    <p className="text-sm font-semibold">Messages</p>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-semibold">Messages</p>
+                  <div className="rounded-full bg-sky-500/15 px-2.5 py-1 text-[11px] font-medium text-sky-300">
+                    {contacts.length}
                   </div>
-                )}
-                <div className="rounded-full bg-sky-500/15 px-2.5 py-1 text-[11px] font-medium text-sky-300">
-                  {contacts.length}
                 </div>
+
+                {/* Mobile Close Button */}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={toggleChat}
+                  className="h-8 w-8 rounded-full xl:hidden"
+                  aria-label="Close chat"
+                >
+                  <XIcon className="h-4 w-4" />
+                </Button>
               </div>
 
-              {!isCollapsed && (
-                <div className="mt-4 flex h-10 items-center rounded-full border border-border bg-muted/50 px-3">
-                  <SearchIcon className="h-4 w-4 text-muted-foreground shrink-0" />
-                  <input
-                    value={search}
-                    onChange={(event) => setSearch(event.target.value)}
-                    placeholder="Search contacts"
-                    className="w-full bg-transparent px-3 text-sm outline-none placeholder:text-muted-foreground"
-                  />
-                </div>
-              )}
+              <div className="mt-4 flex h-10 items-center rounded-full border border-border bg-muted/50 px-3">
+                <SearchIcon className="h-4 w-4 text-muted-foreground shrink-0" />
+                <input
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="Search contacts"
+                  className="w-full bg-transparent px-3 text-[16px] md:text-sm outline-none placeholder:text-muted-foreground"
+                />
+              </div>
             </div>
 
             <div className="flex-1 overflow-y-auto px-2 py-3">
@@ -393,27 +405,25 @@ function ChatPanel({ initialState }: ChatPanelProps) {
                         type="button"
                         onClick={() => handleSelectContact(contact.id)}
                         className={[
-                          "relative flex items-center gap-3 w-full rounded-2xl p-2 text-left transition",
+                          "relative flex items-center gap-3 w-full rounded-2xl p-3 text-left transition",
                           isActive ? "bg-muted" : "hover:bg-muted/50",
-                          isCollapsed ? "justify-center" : "",
+                          isCollapsed ? "xl:justify-center" : "",
                         ].join(" ")}
                         title={isCollapsed ? (contact.name || contact.username) : undefined}
                       >
-                        <Avatar className={`border border-border shrink-0 ${isCollapsed ? 'h-10 w-10' : 'h-11 w-11'}`}>
+                        <Avatar className={`border border-border shrink-0 ${isCollapsed ? 'xl:h-10 xl:w-10 h-11 w-11' : 'h-11 w-11'}`}>
                           <AvatarImage src={contact.image || "/avatar.png"} />
                         </Avatar>
-                        {!isCollapsed && (
-                          <div className="min-w-0 flex-1">
-                            <p className="truncate text-xs font-medium">
-                              {contact.name || contact.username}
-                            </p>
-                            <p className="mt-1 truncate text-[11px] text-muted-foreground/80">
-                              {contact.lastMessage || "Tap to start chatting"}
-                            </p>
-                          </div>
-                        )}
+                        <div className={`min-w-0 flex-1 ${isCollapsed ? 'xl:hidden' : 'block'}`}>
+                          <p className="truncate text-xs font-semibold text-foreground">
+                            {contact.name || contact.username}
+                          </p>
+                          <p className="mt-1 truncate text-[11px] text-muted-foreground/80">
+                            {contact.lastMessage || "Tap to start chatting"}
+                          </p>
+                        </div>
                         {contact.unreadCount > 0 ? (
-                          <span className={`absolute flex h-5 min-w-5 items-center justify-center rounded-full bg-sky-500 px-1 text-[10px] font-semibold text-white ${isCollapsed ? 'top-1 right-1' : 'top-2 right-2'}`}>
+                          <span className="absolute flex h-5 min-w-5 items-center justify-center rounded-full bg-sky-500 px-1 text-[10px] font-semibold text-white top-2 right-2">
                             {contact.unreadCount > 9 ? "9+" : contact.unreadCount}
                           </span>
                         ) : null}
@@ -422,40 +432,53 @@ function ChatPanel({ initialState }: ChatPanelProps) {
                   })
                 ) : (
                   <div className="flex flex-col items-center justify-center py-10 text-muted-foreground">
-                    <UsersIcon className={`h-8 w-8 opacity-20 ${!isCollapsed && 'mb-3'}`} />
-                    {!isCollapsed && <p className="text-xs">No contacts found</p>}
+                    <UsersIcon className="h-8 w-8 opacity-20 mb-3" />
+                    <p className="text-xs">No contacts found</p>
                   </div>
                 )}
               </div>
             </div>
 
             <div
-              className="absolute top-0 right-0 w-1.5 h-full cursor-col-resize hover:bg-primary/50 active:bg-primary z-10 transition-colors"
+              className="hidden xl:block absolute top-0 right-0 w-1.5 h-full cursor-col-resize hover:bg-primary/50 active:bg-primary z-10 transition-colors"
               onMouseDown={handleMouseDown}
             />
           </div>
 
-          <div className="flex flex-1 min-w-0 flex-col">
+          {/* Conversation Detail Column */}
+          <div className={`flex-1 min-w-0 flex-col ${activeContact ? "flex" : "hidden xl:flex"}`}>
             {activeContact ? (
               <>
-                <div className="flex items-center justify-between border-b border-border px-4 py-4">
-                  <div className="flex items-center gap-3">
-                    <Avatar className="h-11 w-11 border border-border">
+                <div className="flex items-center justify-between border-b border-border px-3 sm:px-4 py-3 sm:py-4">
+                  <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                    {/* Mobile Back Button to Contacts List */}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setActiveContactId(null)}
+                      className="h-8 w-8 rounded-full xl:hidden shrink-0"
+                      aria-label="Back to contacts"
+                    >
+                      <ArrowLeftIcon className="h-4 w-4" />
+                    </Button>
+
+                    <Avatar className="h-9 w-9 sm:h-11 sm:w-11 border border-border shrink-0">
                       <AvatarImage src={activeContact.image || "/avatar.png"} />
                     </Avatar>
-                    <div>
-                      <p className="text-sm font-semibold">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold">
                         {activeContact.name || activeContact.username}
                       </p>
-                      <p className="text-xs text-muted-foreground">@{activeContact.username}</p>
+                      <p className="truncate text-xs text-muted-foreground">@{activeContact.username}</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1 sm:gap-2 shrink-0">
                     <Button 
                       onClick={() => startCall(activeContact.id, "AUDIO")}
                       variant="ghost" 
                       size="icon" 
-                      className="h-9 w-9"
+                      className="h-8 w-8 sm:h-9 sm:w-9 rounded-full"
+                      title="Audio Call"
                     >
                       <PhoneIcon className="h-4 w-4" />
                     </Button>
@@ -463,9 +486,20 @@ function ChatPanel({ initialState }: ChatPanelProps) {
                       onClick={() => startCall(activeContact.id, "VIDEO")}
                       variant="ghost" 
                       size="icon" 
-                      className="h-9 w-9"
+                      className="h-8 w-8 sm:h-9 sm:w-9 rounded-full"
+                      title="Video Call"
                     >
                       <VideoIcon className="h-4 w-4" />
+                    </Button>
+                    {/* Mobile Close Button */}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={toggleChat}
+                      className="h-8 w-8 rounded-full xl:hidden"
+                      aria-label="Close chat"
+                    >
+                      <XIcon className="h-4 w-4" />
                     </Button>
                   </div>
                 </div>
@@ -514,25 +548,25 @@ function ChatPanel({ initialState }: ChatPanelProps) {
                   )}
                 </div>
 
-                <div className="border-t border-border px-4 py-4">
+                <div className="border-t border-border px-3 sm:px-4 py-3 sm:py-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))]">
                   <div className="rounded-[24px] border border-border bg-muted/50 p-3">
                     <div className="mb-2 flex items-center gap-2 text-xs text-muted-foreground">
                       <MessageCircleMoreIcon className="h-3.5 w-3.5" />
                       Send a new message
                     </div>
-                    <div className="flex items-end gap-3">
+                    <div className="flex items-end gap-2 sm:gap-3">
                       <Textarea
                         value={draft}
                         onChange={(event) => setDraft(event.target.value)}
                         placeholder={`Message ${activeContact.name || activeContact.username}...`}
-                        className="min-h-[84px] border-none bg-transparent px-1 py-1 shadow-none focus-visible:ring-0"
+                        className="min-h-[60px] sm:min-h-[84px] text-[16px] md:text-sm border-none bg-transparent px-1 py-1 shadow-none focus-visible:ring-0"
                         disabled={isSendPending}
                       />
                       <Button
                         type="button"
                         onClick={handleSend}
                         disabled={!draft.trim() || isSendPending}
-                        className="h-11 w-11 rounded-full p-0"
+                        className="h-10 w-10 sm:h-11 sm:w-11 rounded-full p-0 shrink-0"
                       >
                         <SendHorizonalIcon className="h-4 w-4" />
                       </Button>
@@ -542,7 +576,7 @@ function ChatPanel({ initialState }: ChatPanelProps) {
               </>
             ) : (
               <div className="flex h-full items-center justify-center px-6 text-center text-sm text-muted-foreground">
-                No contacts available for chat right now.
+                Select a contact to start chatting.
               </div>
             )}
           </div>

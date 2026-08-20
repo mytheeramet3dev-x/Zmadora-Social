@@ -217,7 +217,7 @@ function CommentItem({
                 value={replyText}
                 onChange={(event) => setReplyText(event.target.value)}
                 placeholder="Write a reply..."
-                className="h-8 flex-1 rounded-full border border-border bg-muted/40 px-3.5 text-xs outline-none focus:border-primary"
+                className="h-9 flex-1 rounded-full border border-border bg-muted/40 px-3.5 text-[16px] md:text-xs outline-none focus:border-primary"
                 disabled={isReplyPending}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !e.shiftKey) {
@@ -567,12 +567,12 @@ function PostCard({ post, viewerUserId }: PostCardProps) {
         <button
           type="button"
           onClick={handleToggleLike}
-          className={`group flex items-center gap-1.5 text-xs sm:text-sm font-medium transition-colors ${
+          className={`group flex items-center gap-1.5 py-1 px-1.5 rounded-full text-xs sm:text-sm font-medium transition-colors ${
             isLiked ? "text-rose-500 font-semibold" : "text-muted-foreground hover:text-rose-500"
           }`}
           title="Like"
         >
-          <div className="flex h-8 w-8 items-center justify-center rounded-full transition-colors group-hover:bg-rose-500/10">
+          <div className="flex h-9 w-9 items-center justify-center rounded-full transition-colors group-hover:bg-rose-500/10">
             <HeartIcon className={`h-4 w-4 transition-transform group-hover:scale-110 ${isLiked ? "fill-current" : ""}`} />
           </div>
           <span>{likeCount || ""}</span>
@@ -582,10 +582,10 @@ function PostCard({ post, viewerUserId }: PostCardProps) {
         <button
           type="button"
           onClick={() => setShowComments((current) => !current)}
-          className="group flex items-center gap-1.5 text-xs sm:text-sm font-medium text-muted-foreground hover:text-sky-500 transition-colors"
+          className="group flex items-center gap-1.5 py-1 px-1.5 rounded-full text-xs sm:text-sm font-medium text-muted-foreground hover:text-sky-500 transition-colors"
           title="Comments"
         >
-          <div className="flex h-8 w-8 items-center justify-center rounded-full transition-colors group-hover:bg-sky-500/10">
+          <div className="flex h-9 w-9 items-center justify-center rounded-full transition-colors group-hover:bg-sky-500/10">
             <MessageCircleIcon className="h-4 w-4 transition-transform group-hover:scale-110" />
           </div>
           <span>{commentCount || ""}</span>
@@ -595,12 +595,12 @@ function PostCard({ post, viewerUserId }: PostCardProps) {
         <button
           type="button"
           onClick={handleToggleRepost}
-          className={`group flex items-center gap-1.5 text-xs sm:text-sm font-medium transition-colors ${
+          className={`group flex items-center gap-1.5 py-1 px-1.5 rounded-full text-xs sm:text-sm font-medium transition-colors ${
             isReposted ? "text-emerald-500 font-semibold" : "text-muted-foreground hover:text-emerald-500"
           }`}
           title="Repost"
         >
-          <div className="flex h-8 w-8 items-center justify-center rounded-full transition-colors group-hover:bg-emerald-500/10">
+          <div className="flex h-9 w-9 items-center justify-center rounded-full transition-colors group-hover:bg-emerald-500/10">
             <Repeat2Icon className={`h-4 w-4 transition-transform group-hover:scale-110 ${isReposted ? "stroke-[2.5]" : ""}`} />
           </div>
           <span>{repostCount || ""}</span>
@@ -610,12 +610,12 @@ function PostCard({ post, viewerUserId }: PostCardProps) {
         <button
           type="button"
           onClick={handleToggleBookmark}
-          className={`group flex items-center gap-1.5 text-xs sm:text-sm font-medium transition-colors ${
+          className={`group flex items-center gap-1.5 py-1 px-1.5 rounded-full text-xs sm:text-sm font-medium transition-colors ${
             isBookmarked ? "text-amber-500 font-semibold" : "text-muted-foreground hover:text-amber-500"
           }`}
           title="Favorite / Bookmark"
         >
-          <div className="flex h-8 w-8 items-center justify-center rounded-full transition-colors group-hover:bg-amber-500/10">
+          <div className="flex h-9 w-9 items-center justify-center rounded-full transition-colors group-hover:bg-amber-500/10">
             <BookmarkIcon className={`h-4 w-4 transition-transform group-hover:scale-110 ${isBookmarked ? "fill-current" : ""}`} />
           </div>
           <span>{bookmarkCount || ""}</span>
@@ -630,7 +630,7 @@ function PostCard({ post, viewerUserId }: PostCardProps) {
             value={commentText}
             onChange={(event) => setCommentText(event.target.value)}
             placeholder="Write a comment..."
-            className="h-10 flex-1 rounded-full border border-border bg-muted/40 px-4 text-sm outline-none placeholder:text-muted-foreground focus:border-primary transition-colors"
+            className="h-10 flex-1 rounded-full border border-border bg-muted/40 px-4 text-[16px] md:text-sm outline-none placeholder:text-muted-foreground focus:border-primary transition-colors"
             disabled={isActionPending}
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {

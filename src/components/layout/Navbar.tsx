@@ -4,7 +4,6 @@ import DesktopNavbar from "@/components/layout/DesktopNavbar";
 import { getCurrentUserContext } from "@/actions/user.action";
 import { getNotifications } from "@/actions/notification.action";
 import { getChatUnreadCount } from "@/actions/chat.action";
-import LayoutChromeButtons from "@/components/layout/LayoutChromeButtons";
 import { UserButton } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 import { ModeToggle } from "@/components/layout/ModeToggle";
@@ -20,20 +19,13 @@ async function Navbar() {
   return (
     <nav className="sticky top-0 z-50 w-full border-b border-white/10 bg-background/60 backdrop-blur-xl lg:hidden">
       <div className="mx-auto max-w-7xl">
-        <div className="flex h-16 items-center gap-4 px-4">
-          <div className="flex items-center gap-2">
-            <div className="hidden lg:block">
-              <LayoutChromeButtons initialUnreadCount={chatUnreadCount} />
-            </div>
-            <Link
-              href="/"
-              className="bg-gradient-to-r from-sky-500 via-cyan-400 to-teal-400 bg-clip-text font-mono text-xl font-bold tracking-[0.28em] text-transparent"
-            >
-              Zmadora
-            </Link>
-          </div>
-
-          <div className="flex-1" />
+        <div className="flex h-16 items-center justify-between gap-2 px-4">
+          <Link
+            href="/"
+            className="bg-gradient-to-r from-sky-500 via-cyan-400 to-teal-400 bg-clip-text font-mono text-xl font-bold tracking-[0.28em] text-transparent"
+          >
+            Zmadora
+          </Link>
 
           <DesktopNavbar
             isSignedIn={!!context}

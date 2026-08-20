@@ -58,8 +58,8 @@ export default function RootLayout({
                 </div>
                 <Navbar />
 
-                <main className="w-full relative z-10 pb-[60px] md:pb-0">
-                  <div className="mx-auto max-w-[1536px] px-4 md:px-8">
+                <main className="w-full relative z-10 pb-[calc(76px+env(safe-area-inset-bottom,0px))] md:pb-0">
+                  <div className="mx-auto max-w-[1536px] px-2 sm:px-4 md:px-8">
                     <SidebarLayout sidebar={<Sidebar />} rightRail={<ChatRail />}>
                       {children}
                     </SidebarLayout>

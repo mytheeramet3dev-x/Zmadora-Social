@@ -23,7 +23,7 @@ type EditProfileFormProps = {
 };
 
 function inputClassName() {
-  return "w-full rounded-2xl border border-border bg-background px-4 py-3 text-sm text-foreground shadow-none outline-none transition placeholder:text-muted-foreground focus:border-primary focus:ring-1 focus:ring-primary/50";
+  return "w-full rounded-2xl border border-border bg-background px-4 py-3 text-[16px] md:text-sm text-foreground shadow-none outline-none transition placeholder:text-muted-foreground focus:border-primary focus:ring-1 focus:ring-primary/50";
 }
 
 function EditProfileForm({

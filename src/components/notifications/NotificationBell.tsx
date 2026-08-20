@@ -258,7 +258,7 @@ function NotificationBell({
         <DropdownMenu.Content
           align="end"
           sideOffset={12}
-          className="z-50 w-[22rem] rounded-[24px] border border-border bg-popover p-2 shadow-2xl outline-none"
+          className="z-50 w-[min(22rem,calc(100vw-2rem))] rounded-[24px] border border-border bg-popover p-2 shadow-2xl outline-none"
         >
           <div className="flex items-center justify-between px-3 pb-2 pt-1">
             <div>

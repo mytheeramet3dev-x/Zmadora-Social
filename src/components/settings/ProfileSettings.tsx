@@ -25,7 +25,7 @@ function inputWrapperClass() {
 }
 
 function inputClass() {
-  return "w-full bg-transparent px-4 py-3 text-sm text-foreground outline-none placeholder:text-muted-foreground";
+  return "w-full bg-transparent px-4 py-3 text-[16px] md:text-sm text-foreground outline-none placeholder:text-muted-foreground";
 }
 
 export default function ProfileSettings({ user }: ProfileSettingsProps) {
