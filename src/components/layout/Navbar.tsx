@@ -29,8 +29,7 @@ async function Navbar() {
             </Link>
           </div>
 
-          <div className="hidden flex-1 md:block">
-          </div>
+          <div className="flex-1" />
 
           <DesktopNavbar
             isSignedIn={!!context}
