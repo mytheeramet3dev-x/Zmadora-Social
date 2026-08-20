@@ -68,32 +68,72 @@ export const getCurrentUserContext = cache(async () => {
   const username =
     clerkUser.username ?? clerkUser.emailAddresses[0].emailAddress.split("@")[0];
 
-  const dbUser = await prisma.user.upsert({
-    where: {
-      clerkId: clerkUser.id,
-    },
-    update: {
-      name: `${clerkUser.firstName || ""} ${clerkUser.lastName || ""}`.trim() || null,
-      username,
-      email: clerkUser.emailAddresses[0].emailAddress,
-    },
-    create: {
-      clerkId: clerkUser.id,
-      name: `${clerkUser.firstName || ""} ${clerkUser.lastName || ""}`.trim() || null,
-      username,
-      email: clerkUser.emailAddresses[0].emailAddress,
-      image: clerkUser.imageUrl,
-    },
+  let dbUser = await prisma.user.findUnique({
+    where: { clerkId: clerkUser.id },
     include: {
       _count: {
-        select: {
-          followers: true,
-          following: true,
-          posts: true,
-        },
+        select: { followers: true, following: true, posts: true },
       },
     },
   });
+
+  const email = clerkUser.emailAddresses[0].emailAddress;
+  const name = `${clerkUser.firstName || ""} ${clerkUser.lastName || ""}`.trim() || null;
+
+  if (!dbUser) {
+    // If not found by clerkId, try to find by email to link accounts
+    // This happens if user switches from Prod to Dev Clerk keys
+    const existingByEmail = await prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (existingByEmail) {
+      dbUser = await prisma.user.update({
+        where: { email },
+        data: { clerkId: clerkUser.id, name, image: clerkUser.imageUrl },
+        include: {
+          _count: {
+            select: { followers: true, following: true, posts: true },
+          },
+        },
+      });
+    } else {
+      // Need to handle potential username collisions
+      let finalUsername = username;
+      const existingByUsername = await prisma.user.findUnique({
+        where: { username },
+      });
+      if (existingByUsername) {
+        finalUsername = `${username}_${Math.random().toString(36).slice(2, 6)}`;
+      }
+
+      dbUser = await prisma.user.create({
+        data: {
+          clerkId: clerkUser.id,
+          name,
+          username: finalUsername,
+          email,
+          image: clerkUser.imageUrl,
+        },
+        include: {
+          _count: {
+            select: { followers: true, following: true, posts: true },
+          },
+        },
+      });
+    }
+  } else {
+    // Update existing user with latest clerk info
+    dbUser = await prisma.user.update({
+      where: { clerkId: clerkUser.id },
+      data: { name, image: clerkUser.imageUrl },
+      include: {
+        _count: {
+          select: { followers: true, following: true, posts: true },
+        },
+      },
+    });
+  }
 
   return {
     clerkUser,
