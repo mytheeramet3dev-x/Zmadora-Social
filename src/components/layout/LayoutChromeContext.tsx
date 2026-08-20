@@ -27,12 +27,18 @@ export function LayoutChromeProvider({ children }: { children: ReactNode }) {
   const [chatWidth, setChatWidth] = useState(360);
 
   useEffect(() => {
-    const storedWidth = window.localStorage.getItem("social-chat-width");
-    if (!storedWidth) return;
-
-    const parsed = Number(storedWidth);
-    if (!Number.isNaN(parsed)) {
-      setChatWidth(Math.min(520, Math.max(320, parsed)));
+    // Initial check for mobile
+    if (window.innerWidth < 1280) {
+      setIsChatOpen(false);
+      setIsSidebarOpen(false); // also default sidebar closed on mobile just in case
+    } else {
+      const storedWidth = window.localStorage.getItem("social-chat-width");
+      if (storedWidth) {
+        const parsed = Number(storedWidth);
+        if (!Number.isNaN(parsed)) {
+          setChatWidth(Math.min(520, Math.max(320, parsed)));
+        }
+      }
     }
   }, []);
 

@@ -348,8 +348,8 @@ function ChatPanel({ initialState }: ChatPanelProps) {
   };
 
   return (
-    <div className="hidden xl:block h-full py-4 pl-3">
-      <div className="h-[calc(100vh-2rem)] overflow-hidden rounded-2xl border border-border bg-background shadow-sm flex flex-col">
+    <div className="h-full xl:py-4 xl:pl-3">
+      <div className="h-full xl:h-[calc(100vh-2rem)] overflow-hidden xl:rounded-2xl xl:border border-border bg-background shadow-sm flex flex-col">
         <div className="flex flex-1 min-h-0">
           <div
             ref={sidebarRef}

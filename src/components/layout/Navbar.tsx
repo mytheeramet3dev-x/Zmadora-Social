@@ -8,6 +8,7 @@ import LayoutChromeButtons from "@/components/layout/LayoutChromeButtons";
 import { UserButton } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 import { ModeToggle } from "@/components/layout/ModeToggle";
+import { SettingsIcon } from "lucide-react";
 
 async function Navbar() {
   const context = await getCurrentUserContext();
@@ -21,7 +22,9 @@ async function Navbar() {
       <div className="mx-auto max-w-7xl">
         <div className="flex h-16 items-center gap-4 px-4">
           <div className="flex items-center gap-2">
-            <LayoutChromeButtons initialUnreadCount={chatUnreadCount} />
+            <div className="hidden lg:block">
+              <LayoutChromeButtons initialUnreadCount={chatUnreadCount} />
+            </div>
             <Link
               href="/"
               className="bg-gradient-to-r from-sky-500 via-cyan-400 to-teal-400 bg-clip-text font-mono text-xl font-bold tracking-[0.28em] text-transparent"
@@ -43,7 +46,14 @@ async function Navbar() {
           <div className="flex md:hidden items-center gap-2">
             <ModeToggle />
             {context ? (
-              <UserButton />
+              <>
+                <Button variant="ghost" size="icon" asChild>
+                  <Link href="/settings">
+                    <SettingsIcon className="h-5 w-5" />
+                  </Link>
+                </Button>
+                <UserButton />
+              </>
             ) : (
               <Button variant="default" size="sm" asChild>
                 <Link href="/sign-in">Sign-In</Link>
