@@ -49,32 +49,40 @@ function SidebarLayout({ sidebar, rightRail, children }: SidebarLayoutProps) {
       <div className="min-w-0">{children}</div>
 
       {rightRail && isChatOpen ? (
-        <aside className="relative hidden xl:block sticky top-0 h-screen shrink-0">
-          <div
-            role="separator"
-            aria-orientation="vertical"
-            className="absolute left-0 top-0 z-20 h-full w-3 cursor-col-resize"
-            onMouseDown={(event) => {
-              event.preventDefault();
-              const startX = event.clientX;
-              const startWidth = chatWidth;
+        <>
+          {/* Mobile Overlay for Chat */}
+          <div className="fixed inset-0 z-[100] bg-background xl:hidden flex flex-col">
+            {rightRail}
+          </div>
 
-              const handleMouseMove = (moveEvent: MouseEvent) => {
-                const delta = startX - moveEvent.clientX;
-                setChatWidth(startWidth + delta);
-              };
+          {/* Desktop Right Rail */}
+          <aside className="relative hidden xl:block sticky top-0 h-screen shrink-0">
+            <div
+              role="separator"
+              aria-orientation="vertical"
+              className="absolute left-0 top-0 z-20 h-full w-3 cursor-col-resize"
+              onMouseDown={(event) => {
+                event.preventDefault();
+                const startX = event.clientX;
+                const startWidth = chatWidth;
 
-              const handleMouseUp = () => {
-                window.removeEventListener("mousemove", handleMouseMove);
-                window.removeEventListener("mouseup", handleMouseUp);
-              };
+                const handleMouseMove = (moveEvent: MouseEvent) => {
+                  const delta = startX - moveEvent.clientX;
+                  setChatWidth(startWidth + delta);
+                };
 
-              window.addEventListener("mousemove", handleMouseMove);
-              window.addEventListener("mouseup", handleMouseUp);
-            }}
-          />
-          {rightRail}
-        </aside>
+                const handleMouseUp = () => {
+                  window.removeEventListener("mousemove", handleMouseMove);
+                  window.removeEventListener("mouseup", handleMouseUp);
+                };
+
+                window.addEventListener("mousemove", handleMouseMove);
+                window.addEventListener("mouseup", handleMouseUp);
+              }}
+            />
+            {rightRail}
+          </aside>
+        </>
       ) : null}
     </div>
   );

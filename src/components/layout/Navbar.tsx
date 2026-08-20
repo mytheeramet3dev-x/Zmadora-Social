@@ -1,12 +1,13 @@
 import Link from "next/link";
 import React from "react";
 import DesktopNavbar from "@/components/layout/DesktopNavbar";
-import MobileNavbar from "@/components/layout/MobileNavbar";
 import { getCurrentUserContext } from "@/actions/user.action";
 import { getNotifications } from "@/actions/notification.action";
 import { getChatUnreadCount } from "@/actions/chat.action";
-import UserSearch from "@/components/search/UserSearch";
 import LayoutChromeButtons from "@/components/layout/LayoutChromeButtons";
+import { UserButton } from "@clerk/nextjs";
+import { Button } from "@/components/ui/button";
+import { ModeToggle } from "@/components/layout/ModeToggle";
 
 async function Navbar() {
   const context = await getCurrentUserContext();
@@ -38,12 +39,17 @@ async function Navbar() {
             initialNotifications={notifications}
             unreadCount={unreadCount}
           />
-          <MobileNavbar
-            userId={context?.dbUser?.id}
-            profileHref={profileHref}
-            initialNotifications={notifications}
-            unreadCount={unreadCount}
-          />
+
+          <div className="flex md:hidden items-center gap-2">
+            <ModeToggle />
+            {context ? (
+              <UserButton />
+            ) : (
+              <Button variant="default" size="sm" asChild>
+                <Link href="/sign-in">Sign-In</Link>
+              </Button>
+            )}
+          </div>
         </div>
       </div>
     </nav>

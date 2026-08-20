@@ -10,6 +10,7 @@ import { LayoutChromeProvider } from "@/components/layout/LayoutChromeContext";
 import ChatRail from "@/components/chat/ChatRail";
 import { CallProvider } from "@/components/chat/CallProvider";
 import { Toaster } from "react-hot-toast";
+import MobileAppShell from "@/components/layout/MobileAppShell";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -57,12 +58,13 @@ export default function RootLayout({
                 </div>
                 <Navbar />
 
-                <main className="w-full relative z-10">
+                <main className="w-full relative z-10 pb-[60px] md:pb-0">
                   <div className="mx-auto max-w-[1536px] px-4 md:px-8">
                     <SidebarLayout sidebar={<Sidebar />} rightRail={<ChatRail />}>
                       {children}
                     </SidebarLayout>
                   </div>
+                  <MobileAppShell />
                 </main>
               </div>
             </LayoutChromeProvider>
