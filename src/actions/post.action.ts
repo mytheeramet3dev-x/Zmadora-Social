@@ -321,10 +321,17 @@ export async function createPost(content: string, image: string) {
       select: { username: true },
     });
 
+    const trimmedContent = content?.trim() || null;
+    const trimmedImage = image?.trim() || null;
+
+    if (!trimmedContent && !trimmedImage) {
+      return { success: false, error: "Post must contain text or an image" };
+    }
+
     const post = await prisma.post.create({
       data: {
-        content,
-        image,
+        content: trimmedContent,
+        image: trimmedImage,
         authorId: userId,
       },
     });
