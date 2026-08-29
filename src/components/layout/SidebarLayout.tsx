@@ -50,8 +50,8 @@ function SidebarLayout({ sidebar, rightRail, children }: SidebarLayoutProps) {
 
       {rightRail && isChatOpen ? (
         <>
-          {/* Mobile Overlay for Chat */}
-          <div className="fixed inset-0 z-[100] bg-background xl:hidden flex flex-col">
+          {/* Mobile Fullscreen Overlay for Chat */}
+          <div className="fixed inset-0 z-[100] bg-background xl:hidden flex flex-col h-[100dvh] max-h-[100dvh] w-full overflow-hidden">
             {rightRail}
           </div>
 

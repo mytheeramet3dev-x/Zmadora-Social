@@ -106,10 +106,29 @@ function ChatPanel({ initialState }: ChatPanelProps) {
   const [search, setSearch] = useState("");
   const [isSendPending, startSendTransition] = useTransition();
   const activeContactIdRef = useRef<string | null>(initialState.activeContactId);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const [sidebarWidth, setSidebarWidth] = useState(80);
   const sidebarRef = useRef<HTMLDivElement>(null);
   const isResizing = useRef(false);
+
+  // On mobile screen width (< 1280px), start at the contacts list rather than trapping user in contact 1
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.innerWidth < 1280) {
+      setActiveContactId(null);
+      activeContactIdRef.current = null;
+    }
+  }, []);
+
+  // Lock body scroll when mobile chat overlay is open
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.innerWidth < 1280) {
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.overflow = "";
+      };
+    }
+  }, []);
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -195,6 +214,10 @@ function ChatPanel({ initialState }: ChatPanelProps) {
     null;
 
   const activeMessages = activeContactId ? messagesByContact[activeContactId] || [] : [];
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [activeMessages.length, activeContactId]);
 
   useEffect(() => {
     emitUnreadCount(contacts.reduce((sum, contact) => sum + contact.unreadCount, 0));
@@ -538,6 +561,7 @@ function ChatPanel({ initialState }: ChatPanelProps) {
                           </div>
                         );
                       })}
+                      <div ref={messagesEndRef} />
                     </div>
                   ) : (
                     <div className="flex h-full flex-col items-center justify-center rounded-md border border-dashed border-border/70 bg-muted/10 px-6 py-8 text-center">
