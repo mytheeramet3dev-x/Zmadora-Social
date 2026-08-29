@@ -3,8 +3,10 @@
 import prisma from "@/lib/prisma";
 import { publishNotificationEvent } from "@/lib/notification-events";
 import { auth, currentUser, clerkClient } from "@clerk/nextjs/server";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag, unstable_cache } from "next/cache";
 import { cache } from "react";
+import { AppCache } from "@/lib/cache";
+import { CACHE_TAGS } from "@/lib/cache-tags";
 
 const profileCommentInclude = {
   author: {
@@ -159,135 +161,25 @@ export async function getUserByClerkId(clerkId: string) {
   });
 }
 
-export async function getProfileByUsername(username: string) {
-  try {
-    const viewerIdPromise = getDbUserId();
-    const userPromise = prisma.user.findUnique({
-      where: {
-        username,
-      },
-      include: {
-        _count: {
-          select: {
-            followers: true,
-            following: true,
-            posts: true,
-          },
-        },
-        posts: {
-          orderBy: {
-            createdAt: "desc",
-          },
-          include: {
-            author: {
-              select: {
-                id: true,
-                name: true,
-                username: true,
-                image: true,
-                bio: true,
-                location: true,
-                website: true,
-                _count: {
-                  select: {
-                    followers: true,
-                    posts: true,
-                  },
-                },
-              },
-            },
-            likes: {
-              select: {
-                userId: true,
-              },
-            },
-            bookmarks: {
-              select: {
-                userId: true,
-              },
-            },
-            reposts: {
-              select: {
-                userId: true,
-              },
-            },
-            comments: {
-              where: {
-                parentId: null,
-              },
-              include: profileCommentInclude,
-              orderBy: {
-                createdAt: "asc",
-              },
-            },
-            _count: {
-              select: {
-                likes: true,
-                comments: true,
-                bookmarks: true,
-                reposts: true,
-              },
-            },
-          },
-        },
-      },
-    });
-
-    const [viewerId, user] = await Promise.all([viewerIdPromise, userPromise]);
-
-    if (!user) {
-      return null;
-    }
-
-    const isOwnProfile = viewerId === user.id;
-
-    const [follow, friends, userReposts] = await Promise.all([
-      viewerId && !isOwnProfile
-        ? prisma.follows.findUnique({
-            where: {
-              followerId_followingId: {
-                followerId: viewerId,
-                followingId: user.id,
-              },
-            },
-          })
-        : Promise.resolve(null),
-      prisma.user.findMany({
+const getCachedRawProfile = (username: string) =>
+  unstable_cache(
+    async () => {
+      const user = await prisma.user.findUnique({
         where: {
-          AND: [
-            {
-              followers: {
-                some: {
-                  followerId: user.id,
-                },
-              },
-            },
-            {
-              following: {
-                some: {
-                  followingId: user.id,
-                },
-              },
-            },
-          ],
-        },
-        select: {
-          id: true,
-          name: true,
-          username: true,
-          image: true,
-        },
-        orderBy: [{ name: "asc" }, { username: "asc" }],
-      }),
-      prisma.repost.findMany({
-        where: {
-          userId: user.id,
-        },
-        orderBy: {
-          createdAt: "desc",
+          username,
         },
         include: {
-          post: {
+          _count: {
+            select: {
+              followers: true,
+              following: true,
+              posts: true,
+            },
+          },
+          posts: {
+            orderBy: {
+              createdAt: "desc",
+            },
             include: {
               author: {
                 select: {
@@ -341,8 +233,135 @@ export async function getProfileByUsername(username: string) {
             },
           },
         },
-      }),
-    ]);
+      });
+
+      if (!user) {
+        return null;
+      }
+
+      const [friends, userReposts] = await Promise.all([
+        prisma.user.findMany({
+          where: {
+            AND: [
+              {
+                followers: {
+                  some: {
+                    followerId: user.id,
+                  },
+                },
+              },
+              {
+                following: {
+                  some: {
+                    followingId: user.id,
+                  },
+                },
+              },
+            ],
+          },
+          select: {
+            id: true,
+            name: true,
+            username: true,
+            image: true,
+          },
+          orderBy: [{ name: "asc" }, { username: "asc" }],
+        }),
+        prisma.repost.findMany({
+          where: {
+            userId: user.id,
+          },
+          orderBy: {
+            createdAt: "desc",
+          },
+          include: {
+            post: {
+              include: {
+                author: {
+                  select: {
+                    id: true,
+                    name: true,
+                    username: true,
+                    image: true,
+                    bio: true,
+                    location: true,
+                    website: true,
+                    _count: {
+                      select: {
+                        followers: true,
+                        posts: true,
+                      },
+                    },
+                  },
+                },
+                likes: {
+                  select: {
+                    userId: true,
+                  },
+                },
+                bookmarks: {
+                  select: {
+                    userId: true,
+                  },
+                },
+                reposts: {
+                  select: {
+                    userId: true,
+                  },
+                },
+                comments: {
+                  where: {
+                    parentId: null,
+                  },
+                  include: profileCommentInclude,
+                  orderBy: {
+                    createdAt: "asc",
+                  },
+                },
+                _count: {
+                  select: {
+                    likes: true,
+                    comments: true,
+                    bookmarks: true,
+                    reposts: true,
+                  },
+                },
+              },
+            },
+          },
+        }),
+      ]);
+
+      return { user, friends, userReposts };
+    },
+    ["raw-user-profile", username],
+    { tags: [CACHE_TAGS.profile(username)], revalidate: 300 }
+  )();
+
+export async function getProfileByUsername(username: string) {
+  try {
+    const viewerIdPromise = getDbUserId();
+    const rawDataPromise = getCachedRawProfile(username);
+
+    const [viewerId, rawData] = await Promise.all([viewerIdPromise, rawDataPromise]);
+
+    if (!rawData || !rawData.user) {
+      return null;
+    }
+
+    const { user, friends, userReposts } = rawData;
+    const isOwnProfile = viewerId === user.id;
+
+    const follow = viewerId && !isOwnProfile
+      ? await prisma.follows.findUnique({
+          where: {
+            followerId_followingId: {
+              followerId: viewerId,
+              followingId: user.id,
+            },
+          },
+        })
+      : null;
 
     const viewerFollowingIds = viewerId && friends.length > 0
       ? new Set(
@@ -401,50 +420,57 @@ export async function getProfileByUsername(username: string) {
   }
 }
 
-export async function getDbUserId() {
+export const getDbUserId = cache(async () => {
   const context = await getCurrentUserContext();
   return context?.dbUser.id ?? null;
-}
+});
 
 export async function getRandomUsers() {
   try {
-    const context = await getCurrentUserContext();
-    const userId = context?.dbUser.id;
+    const userId = await getDbUserId();
 
     if (!userId) return [];
 
-    const allOtherUsers = await prisma.user.findMany({
-      where: {
-        NOT: { id: userId },
-      },
-      select: {
-        id: true,
-        name: true,
-        username: true,
-        image: true,
-        following: {
+    const getCachedRecommendations = unstable_cache(
+      async (currentUid: string) => {
+        const allOtherUsers = await prisma.user.findMany({
           where: {
-            followingId: userId,
+            NOT: { id: currentUid },
           },
-        },
-        followers: {
-          where: {
-            followerId: userId,
+          select: {
+            id: true,
+            name: true,
+            username: true,
+            image: true,
+            following: {
+              where: {
+                followingId: currentUid,
+              },
+            },
+            followers: {
+              where: {
+                followerId: currentUid,
+              },
+            },
           },
-        },
+        });
+
+        allOtherUsers.sort((a, b) => {
+          const aFollowsUs = a.following.length > 0 ? 1 : 0;
+          const bFollowsUs = b.following.length > 0 ? 1 : 0;
+          return bFollowsUs - aFollowsUs;
+        });
+
+        return allOtherUsers.slice(0, 3).map(({ following, followers, ...rest }) => ({
+          ...rest,
+          isFollowing: followers.length > 0,
+        }));
       },
-    });
+      ["who-to-follow", userId],
+      { tags: [CACHE_TAGS.whoToFollow], revalidate: 120 }
+    );
 
-    allOtherUsers.sort((a, b) => {
-      const aFollowsUs = a.following.length > 0 ? 1 : 0;
-      const bFollowsUs = b.following.length > 0 ? 1 : 0;
-      return bFollowsUs - aFollowsUs;
-    });
-
-    return allOtherUsers.slice(0, 3).map(({ following, followers, ...rest }) => ({
-      ...rest,
-      isFollowing: followers.length > 0,
-    }));
+    return await getCachedRecommendations(userId);
   } catch (error) {
     console.log("Error fetching random users", error);
     return [];
@@ -459,45 +485,43 @@ function compactSearchValue(value: string) {
   return normalizeSearchValue(value).replace(/\s+/g, "");
 }
 
-function levenshteinDistance(a: string, b: string) {
-  if (a === b) return 0;
-  if (!a.length) return b.length;
-  if (!b.length) return a.length;
+function levenshteinDistance(left: string, right: string) {
+  if (left === right) return 0;
+  if (!left.length) return right.length;
+  if (!right.length) return left.length;
 
-  const rows = a.length + 1;
-  const cols = b.length + 1;
-  const dp = Array.from({ length: rows }, () => Array<number>(cols).fill(0));
+  const matrix: number[][] = [];
 
-  for (let row = 0; row < rows; row += 1) dp[row][0] = row;
-  for (let col = 0; col < cols; col += 1) dp[0][col] = col;
+  for (let i = 0; i <= left.length; i++) {
+    matrix[i] = [i];
+  }
 
-  for (let row = 1; row < rows; row += 1) {
-    for (let col = 1; col < cols; col += 1) {
-      const cost = a[row - 1] === b[col - 1] ? 0 : 1;
-      dp[row][col] = Math.min(
-        dp[row - 1][col] + 1,
-        dp[row][col - 1] + 1,
-        dp[row - 1][col - 1] + cost
+  for (let j = 0; j <= right.length; j++) {
+    matrix[0][j] = j;
+  }
+
+  for (let i = 1; i <= left.length; i++) {
+    for (let j = 1; j <= right.length; j++) {
+      const cost = left[i - 1] === right[j - 1] ? 0 : 1;
+      matrix[i][j] = Math.min(
+        matrix[i - 1][j] + 1,
+        matrix[i][j - 1] + 1,
+        matrix[i - 1][j - 1] + cost
       );
     }
   }
 
-  return dp[a.length][b.length];
+  return matrix[left.length][right.length];
 }
 
 function isSubsequence(query: string, target: string) {
-  let queryIndex = 0;
-
-  for (const char of target) {
-    if (char === query[queryIndex]) {
-      queryIndex += 1;
-      if (queryIndex === query.length) {
-        return true;
-      }
-    }
+  let targetIndex = 0;
+  for (let queryIndex = 0; queryIndex < query.length; queryIndex++) {
+    targetIndex = target.indexOf(query[queryIndex], targetIndex);
+    if (targetIndex === -1) return false;
+    targetIndex += 1;
   }
-
-  return query.length === 0;
+  return true;
 }
 
 function scoreCandidate(query: string, target: string) {
@@ -554,6 +578,12 @@ export async function searchUsers(query: string) {
 
     if (normalizedQuery.length < 2) {
       return [];
+    }
+
+    const cacheKey = `search:users:${normalizedQuery.toLowerCase()}`;
+    const cached = await AppCache.get<{ id: string; name: string | null; username: string; image: string | null }[]>(cacheKey);
+    if (cached) {
+      return cached;
     }
 
     const context = await getCurrentUserContext();
@@ -629,6 +659,8 @@ export async function searchUsers(query: string) {
       .slice(0, 8)
       .map(({ score: _score, ...user }) => user);
 
+    await AppCache.set(cacheKey, rankedUsers, 60);
+
     return rankedUsers;
   } catch (error) {
     console.log("Error in searchUsers", error);
@@ -693,8 +725,10 @@ export async function toggleFollow(targetUserId: string) {
     });
 
     revalidatePath("/");
+    revalidateTag(CACHE_TAGS.whoToFollow);
     if (targetUser?.username) {
       revalidatePath(`/profile/${targetUser.username}`);
+      revalidateTag(CACHE_TAGS.profile(targetUser.username));
     }
 
     const followerCount = await prisma.follows.count({
@@ -794,6 +828,8 @@ export async function updateProfile({
 
     revalidatePath("/");
     revalidatePath(`/profile/${updatedUser.username}`);
+    revalidateTag(CACHE_TAGS.profile(updatedUser.username));
+    revalidateTag(CACHE_TAGS.whoToFollow);
     return { success: true };
   } catch (error) {
     console.log("Error in updateProfile", error);

@@ -8,6 +8,7 @@ function getPrismaClient(): PrismaClient { return prisma as PrismaClient; }
 import { publishChatEvent } from "@/lib/chat-events";
 import { publishNotificationEvent } from "@/lib/notification-events";
 import { getDbUserId, getRandomUsers } from "./user.action";
+import { AppCache } from "@/lib/cache";
 
 const userPreviewSelect = {
   id: true,
@@ -56,7 +57,11 @@ type ConversationOverviewRow = MessageWithUsers & {
 };
 
 async function findMessagesForOverview(prisma: TxClient, userId: string) {
-  return prisma.$queryRaw<ConversationOverviewRow[]>(Prisma.sql`
+  const cacheKey = `chat:overview:${userId}`;
+  const cached = await AppCache.get<ConversationOverviewRow[]>(cacheKey);
+  if (cached) return cached;
+
+  const rows = await prisma.$queryRaw<ConversationOverviewRow[]>(Prisma.sql`
     WITH ranked_messages AS (
       SELECT
         dm.id,
@@ -117,6 +122,9 @@ async function findMessagesForOverview(prisma: TxClient, userId: string) {
     WHERE ranked_messages.rn = 1
     ORDER BY ranked_messages."createdAt" DESC
   `);
+
+  await AppCache.set(cacheKey, rows, 30);
+  return rows;
 }
 
 async function markConversationMessagesAsRead(
@@ -124,7 +132,7 @@ async function markConversationMessagesAsRead(
   fromUserId: string,
   toUserId: string
 ) {
-  await prisma.directMessage.updateMany({
+  const result = await prisma.directMessage.updateMany({
     where: {
       senderId: fromUserId,
       receiverId: toUserId,
@@ -134,6 +142,10 @@ async function markConversationMessagesAsRead(
       readAt: new Date(),
     },
   });
+
+  if (result.count > 0) {
+    await AppCache.delete(`chat:overview:${toUserId}`);
+  }
 }
 
 async function findConversationMessages(
@@ -428,6 +440,11 @@ export async function sendDirectMessage(receiverId: string, content: string) {
       contact: receiver,
       message: normalizedMessage,
     });
+
+    await Promise.all([
+      AppCache.delete(`chat:overview:${senderId}`),
+      AppCache.delete(`chat:overview:${receiverId}`),
+    ]);
 
     return {
       success: true,

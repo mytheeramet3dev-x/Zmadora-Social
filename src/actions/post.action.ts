@@ -4,7 +4,8 @@ import prisma from "@/lib/prisma";
 import { publishFeedEvent } from "@/lib/feed-events";
 import { publishNotificationEvent } from "@/lib/notification-events";
 import { getDbUserId } from "./user.action";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag, unstable_cache } from "next/cache";
+import { CACHE_TAGS } from "@/lib/cache-tags";
 
 const commentInclude = {
   author: {
@@ -171,11 +172,19 @@ type FeedPostRecord = {
 };
 
 async function getPostSnapshot(postId: string) {
-  const post = await prisma.post.findUnique({
-    where: { id: postId },
-    include: postSnapshotInclude,
-  });
+  const getCachedSnapshot = unstable_cache(
+    async (id: string) => {
+      const post = await prisma.post.findUnique({
+        where: { id },
+        include: postSnapshotInclude,
+      });
+      return post;
+    },
+    ["post-snapshot", postId],
+    { tags: [CACHE_TAGS.post(postId)], revalidate: 300 }
+  );
 
+  const post = await getCachedSnapshot(postId);
   if (!post) return null;
 
   const { _count, ...author } = post.author;
@@ -193,119 +202,127 @@ async function getPostSnapshot(postId: string) {
   };
 }
 
-function mapFeedPost(
-  post: FeedPostRecord,
-  viewerUserId: string | null
-) {
-  const { followers, _count, ...author } = post.author;
+const getCachedFeedPosts = (cursor?: string | null, take: number = FEED_PAGE_SIZE) =>
+  unstable_cache(
+    async () => {
+      const posts = await prisma.post.findMany({
+        take: take + 1,
+        ...(cursor
+          ? {
+              cursor: {
+                id: cursor,
+              },
+              skip: 1,
+            }
+          : {}),
+        orderBy: [
+          {
+            createdAt: "desc",
+          },
+          {
+            id: "desc",
+          },
+        ],
+        include: {
+          author: {
+            select: {
+              id: true,
+              name: true,
+              image: true,
+              username: true,
+              bio: true,
+              location: true,
+              website: true,
+              _count: {
+                select: {
+                  followers: true,
+                  posts: true,
+                },
+              },
+            },
+          },
+          comments: {
+            where: {
+              parentId: null,
+            },
+            include: commentInclude,
+            orderBy: {
+              createdAt: "asc",
+            },
+            take: 2,
+          },
+          likes: {
+            select: {
+              userId: true,
+            },
+          },
+          bookmarks: {
+            select: {
+              userId: true,
+            },
+          },
+          reposts: {
+            select: {
+              userId: true,
+            },
+          },
+          _count: {
+            select: {
+              likes: true,
+              comments: true,
+              bookmarks: true,
+              reposts: true,
+            },
+          },
+        },
+      });
 
-  return {
-    ...post,
-    author: {
-      ...author,
-      stats: {
-        followers: _count.followers,
-        posts: _count.posts,
-      },
-      isFollowing: viewerUserId ? (followers?.length ?? 0) > 0 : false,
+      return posts;
     },
-  };
-}
+    ["feed-posts-page", cursor || "initial", take.toString()],
+    { tags: [CACHE_TAGS.feed, CACHE_TAGS.posts], revalidate: 60 }
+  )();
 
 async function getFeedPage({
   cursor,
   take = FEED_PAGE_SIZE,
 }: FeedPageOptions = {}) {
   const viewerUserId = await getDbUserId();
+  const rawPosts = await getCachedFeedPosts(cursor, take);
 
-  const posts = await prisma.post.findMany({
-    take: take + 1,
-    ...(cursor
-      ? {
-          cursor: {
-            id: cursor,
-          },
-          skip: 1,
-        }
-      : {}),
-    orderBy: [
-      {
-        createdAt: "desc",
-      },
-      {
-        id: "desc",
-      },
-    ],
-    include: {
-      author: {
-        select: {
-          id: true,
-          name: true,
-          image: true,
-          username: true,
-          bio: true,
-          location: true,
-          website: true,
-          followers: viewerUserId
-            ? {
-                where: {
-                  followerId: viewerUserId,
-                },
-                select: {
-                  followerId: true,
-                },
-                take: 1,
-              }
-            : undefined,
-          _count: {
-            select: {
-              followers: true,
-              posts: true,
+  const hasMore = rawPosts.length > take;
+  const pagePosts = hasMore ? rawPosts.slice(0, take) : rawPosts;
+
+  const authorIds = pagePosts.map((p) => p.author.id);
+  const followingSet = viewerUserId && authorIds.length > 0
+    ? new Set(
+        (
+          await prisma.follows.findMany({
+            where: {
+              followerId: viewerUserId,
+              followingId: { in: authorIds },
             },
-          },
-        },
-      },
-      comments: {
-        where: {
-          parentId: null,
-        },
-        include: commentInclude,
-        orderBy: {
-          createdAt: "asc",
-        },
-        take: 2,
-      },
-      likes: {
-        select: {
-          userId: true,
-        },
-      },
-      bookmarks: {
-        select: {
-          userId: true,
-        },
-      },
-      reposts: {
-        select: {
-          userId: true,
-        },
-      },
-      _count: {
-        select: {
-          likes: true,
-          comments: true,
-          bookmarks: true,
-          reposts: true,
-        },
-      },
-    },
-  });
-
-  const hasMore = posts.length > take;
-  const pagePosts = hasMore ? posts.slice(0, take) : posts;
+            select: { followingId: true },
+          })
+        ).map((f) => f.followingId)
+      )
+    : new Set<string>();
 
   return {
-    posts: pagePosts.map((post) => mapFeedPost(post, viewerUserId)),
+    posts: pagePosts.map((post) => {
+      const { _count, ...author } = post.author;
+      return {
+        ...post,
+        author: {
+          ...author,
+          stats: {
+            followers: _count.followers,
+            posts: _count.posts,
+          },
+          isFollowing: followingSet.has(author.id),
+        },
+      };
+    }),
     nextCursor: hasMore ? pagePosts[pagePosts.length - 1]?.id ?? null : null,
   };
 }
@@ -336,9 +353,12 @@ export async function createPost(content: string, image: string) {
       },
     });
 
-    revalidatePath("/"); // purge the cache for the home page
+    revalidatePath("/");
+    revalidateTag(CACHE_TAGS.feed);
+    revalidateTag(CACHE_TAGS.posts);
     if (author?.username) {
       revalidatePath(`/profile/${author.username}`);
+      revalidateTag(CACHE_TAGS.profile(author.username));
     }
     const postSnapshot = await getPostSnapshot(post.id);
     if (postSnapshot) {
@@ -444,6 +464,8 @@ export async function toggleLike(postId: string) {
       }
     }
 
+    revalidateTag(CACHE_TAGS.post(postId));
+    revalidateTag(CACHE_TAGS.feed);
     const postSnapshot = await getPostSnapshot(postId);
     if (postSnapshot) {
       publishFeedEvent({
@@ -521,6 +543,7 @@ export async function toggleBookmark(postId: string) {
       }
     }
 
+    revalidateTag(CACHE_TAGS.post(postId));
     const postSnapshot = await getPostSnapshot(postId);
     if (postSnapshot) {
       publishFeedEvent({
@@ -600,12 +623,15 @@ export async function toggleRepost(postId: string) {
     }
 
     revalidatePath("/");
+    revalidateTag(CACHE_TAGS.post(postId));
+    revalidateTag(CACHE_TAGS.feed);
     const currentUser = await prisma.user.findUnique({
       where: { id: userId },
       select: { username: true },
     });
     if (currentUser?.username) {
       revalidatePath(`/profile/${currentUser.username}`);
+      revalidateTag(CACHE_TAGS.profile(currentUser.username));
     }
 
     const postSnapshot = await getPostSnapshot(postId);
@@ -730,6 +756,8 @@ async function createCommentInternal({
       });
     }
 
+    revalidateTag(CACHE_TAGS.post(postId));
+    revalidateTag(CACHE_TAGS.feed);
     const postSnapshot = await getPostSnapshot(postId);
     if (postSnapshot) {
       publishFeedEvent({
@@ -821,6 +849,7 @@ export async function toggleCommentLike(commentId: string) {
       }
     }
 
+    revalidateTag(CACHE_TAGS.post(comment.postId));
     const postSnapshot = await getPostSnapshot(comment.postId);
     if (postSnapshot) {
       publishFeedEvent({
@@ -860,9 +889,13 @@ export async function deletePost(postId: string) {
       where: { id: postId },
     });
 
-    revalidatePath("/"); // purge the cache
+    revalidatePath("/");
+    revalidateTag(CACHE_TAGS.feed);
+    revalidateTag(CACHE_TAGS.posts);
+    revalidateTag(CACHE_TAGS.post(postId));
     if (post.author.username) {
       revalidatePath(`/profile/${post.author.username}`);
+      revalidateTag(CACHE_TAGS.profile(post.author.username));
     }
     publishFeedEvent({
       type: "post_deleted",
