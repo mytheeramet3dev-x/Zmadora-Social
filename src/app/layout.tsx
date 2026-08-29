@@ -50,12 +50,7 @@ export default function RootLayout({
               disableTransitionOnChange
             >
             <LayoutChromeProvider>
-              <div className="relative min-h-screen">
-                <div className="pointer-events-none fixed inset-0 overflow-hidden z-0">
-                  <div className="absolute inset-x-0 top-0 h-[500px] bg-[radial-gradient(ellipse_at_top,rgba(139,92,246,0.15),transparent_80%)] dark:bg-[radial-gradient(ellipse_at_top,rgba(139,92,246,0.25),transparent_80%)]" />
-                  <div className="absolute left-[-10rem] top-40 h-[400px] w-[400px] rounded-full bg-indigo-500/10 blur-[100px] dark:bg-indigo-600/20" />
-                  <div className="absolute bottom-0 right-[-10rem] h-[500px] w-[500px] rounded-full bg-fuchsia-500/10 blur-[120px] dark:bg-fuchsia-600/20" />
-                </div>
+              <div className="relative min-h-screen bg-background text-foreground">
                 <Navbar />
 
                 <main className="w-full relative z-10 pb-[calc(76px+env(safe-area-inset-bottom,0px))] md:pb-0">

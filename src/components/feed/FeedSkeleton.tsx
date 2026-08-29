@@ -11,10 +11,12 @@ export function PostSkeleton() {
         </div>
         <Skeleton className="h-4 w-full" />
         <Skeleton className="h-4 w-5/6" />
-        <Skeleton className="h-64 w-full rounded-2xl mt-4" />
-        <div className="flex gap-6 mt-4">
-          <Skeleton className="h-8 w-16 rounded-full" />
-          <Skeleton className="h-8 w-16 rounded-full" />
+        <Skeleton className="h-56 w-full rounded-md mt-3" />
+        <div className="flex gap-4 mt-3">
+          <Skeleton className="h-7 w-12 rounded-md" />
+          <Skeleton className="h-7 w-12 rounded-md" />
+          <Skeleton className="h-7 w-12 rounded-md" />
+          <Skeleton className="h-7 w-12 rounded-md" />
         </div>
       </div>
     </article>

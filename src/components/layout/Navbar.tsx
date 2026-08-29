@@ -17,12 +17,12 @@ async function Navbar() {
     : [{ notifications: [], unreadCount: 0 }, 0];
 
   return (
-    <nav className="sticky top-0 z-50 w-full border-b border-white/10 bg-background/60 backdrop-blur-xl lg:hidden">
+    <nav className="sticky top-0 z-50 w-full border-b border-border bg-background/80 backdrop-blur-md lg:hidden">
       <div className="mx-auto max-w-7xl">
-        <div className="flex h-16 items-center justify-between gap-2 px-4">
+        <div className="flex h-14 min-w-0 items-center justify-between gap-2 px-3 sm:px-4">
           <Link
             href="/"
-            className="bg-gradient-to-r from-sky-500 via-cyan-400 to-teal-400 bg-clip-text font-mono text-xl font-bold tracking-[0.28em] text-transparent"
+            className="min-w-0 truncate bg-gradient-to-r from-primary via-primary/90 to-primary/70 bg-clip-text font-mono text-lg font-bold tracking-[0.18em] text-transparent"
           >
             Zmadora
           </Link>

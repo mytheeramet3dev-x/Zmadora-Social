@@ -22,24 +22,29 @@ type LayoutChromeContextValue = {
 const LayoutChromeContext = createContext<LayoutChromeContextValue | null>(null);
 
 export function LayoutChromeProvider({ children }: { children: ReactNode }) {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [isChatOpen, setIsChatOpen] = useState(true);
+  // Wait for the browser viewport before enabling desktop chrome.
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isChatOpen, setIsChatOpen] = useState(false);
   const [chatWidth, setChatWidth] = useState(360);
 
   useEffect(() => {
-    // Initial check for mobile
-    if (window.innerWidth < 1280) {
-      setIsChatOpen(false);
-      setIsSidebarOpen(false); // also default sidebar closed on mobile just in case
-    } else {
-      const storedWidth = window.localStorage.getItem("social-chat-width");
-      if (storedWidth) {
-        const parsed = Number(storedWidth);
-        if (!Number.isNaN(parsed)) {
-          setChatWidth(Math.min(520, Math.max(320, parsed)));
-        }
+    const syncViewportChrome = () => {
+      setIsSidebarOpen(window.innerWidth >= 1024);
+      setIsChatOpen(window.innerWidth >= 1280);
+    };
+
+    syncViewportChrome();
+    window.addEventListener("resize", syncViewportChrome);
+
+    const storedWidth = window.localStorage.getItem("social-chat-width");
+    if (storedWidth) {
+      const parsed = Number(storedWidth);
+      if (Number.isFinite(parsed)) {
+        setChatWidth(Math.min(520, Math.max(320, Math.round(parsed))));
       }
     }
+
+    return () => window.removeEventListener("resize", syncViewportChrome);
   }, []);
 
   useEffect(() => {

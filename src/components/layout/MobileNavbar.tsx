@@ -18,7 +18,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { useState } from "react";
-import { SignInButton, SignOutButton, useAuth } from "@clerk/nextjs";
+import { SignOutButton, useAuth } from "@clerk/nextjs";
 import { useTheme } from "next-themes";
 import Link from "next/link";
 import NotificationBell from "@/components/notifications/NotificationBell";
@@ -84,7 +84,7 @@ function MobileNavbar({
             <MenuIcon className="h-5 w-5" />
           </Button>
         </SheetTrigger>
-        <SheetContent side="right" className="w-300px">
+        <SheetContent side="right" className="w-[min(22rem,calc(100vw-1rem))]">
           <SheetHeader>
             <SheetTitle>Menu</SheetTitle>
           </SheetHeader>

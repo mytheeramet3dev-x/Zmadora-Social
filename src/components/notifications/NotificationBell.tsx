@@ -14,7 +14,7 @@ import {
   UserPlusIcon,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
+import { useCallback, useEffect, useState, useTransition } from "react";
 import toast from "react-hot-toast";
 import { getNotifications, markAllNotificationsAsRead } from "@/actions/notification.action";
 import { useLayoutChrome } from "@/components/layout/LayoutChromeContext";
@@ -23,7 +23,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { pusherClient } from "@/lib/pusher-client";
 
-type NotificationItem = {
+export type NotificationItem = {
   id: string;
   type: "LIKE" | "COMMENT" | "FOLLOW" | "COMMENT_LIKE" | "REPLY" | "MESSAGE" | "MISSED_CALL" | "REPOST" | "BOOKMARK";
   read: boolean;
@@ -156,11 +156,6 @@ function NotificationBell({
   const [isPending, startTransition] = useTransition();
 
   const hasNotifications = notifications.length > 0;
-  const unreadNotifications = useMemo(
-    () => notifications.filter((notification) => !notification.read).length,
-    [notifications]
-  );
-
   const refreshNotifications = useCallback(async () => {
     const next = await getNotifications();
     setNotifications(next.notifications as NotificationItem[]);
@@ -234,6 +229,7 @@ function NotificationBell({
       <DropdownMenu.Trigger asChild>
         <button
           type="button"
+          aria-label="Open notifications"
           className={cn(
             "relative flex items-center transition-all duration-200 outline-none select-none text-foreground",
             className || "gap-2 rounded-full p-2 hover:bg-accent text-sm font-medium"
@@ -241,11 +237,11 @@ function NotificationBell({
         >
           <div className="relative flex items-center justify-center">
             <BellIcon
-              className={iconClassName || (showLabel ? "w-7 h-7" : "w-4 h-4")}
+              className={iconClassName || (showLabel ? "w-5 h-5" : "w-4 h-4")}
               strokeWidth={2}
             />
             {unreadCount > 0 ? (
-              <span className="absolute -top-1.5 -right-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-sky-500 px-1 text-[10px] font-semibold text-white shadow-lg">
+              <span className="absolute -top-1.5 -right-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground shadow-sm">
                 {unreadCount > 9 ? "9+" : unreadCount}
               </span>
             ) : null}
@@ -257,10 +253,10 @@ function NotificationBell({
       <DropdownMenu.Portal>
         <DropdownMenu.Content
           align="end"
-          sideOffset={12}
-          className="z-50 w-[min(22rem,calc(100vw-2rem))] rounded-[24px] border border-border bg-popover p-2 shadow-2xl outline-none"
+          sideOffset={8}
+          className="z-50 w-[min(22rem,calc(100vw-2rem))] rounded-md border border-border bg-popover p-1.5 shadow-md outline-none"
         >
-          <div className="flex items-center justify-between px-3 pb-2 pt-1">
+          <div className="flex items-center justify-between px-2.5 pb-2 pt-1 border-b border-border/60">
             <div>
               <p className="text-sm font-semibold">Notifications</p>
               <p className="text-xs text-muted-foreground">
@@ -272,14 +268,14 @@ function NotificationBell({
             {isPending ? (
               <span className="text-xs text-muted-foreground">Updating...</span>
             ) : unreadCount > 0 ? (
-              <div className="inline-flex items-center gap-1 rounded-full bg-sky-500/15 px-2 py-1 text-[11px] font-medium text-sky-700 dark:text-sky-300">
-                <CheckCheckIcon className="h-3.5 w-3.5" />
+              <div className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
+                <CheckCheckIcon className="h-3 w-3" />
                 New
               </div>
             ) : null}
           </div>
 
-          <div className="max-h-[26rem] space-y-2 overflow-y-auto px-1 pb-1">
+          <div className="max-h-[24rem] space-y-1.5 overflow-y-auto px-0.5 pt-1.5 pb-0.5">
             {hasNotifications ? (
               notifications.map((notification) => {
                 const copy = getNotificationCopy(notification);
@@ -297,25 +293,25 @@ function NotificationBell({
                     <button
                       type="button"
                       className={[
-                        "flex w-full items-start gap-3 rounded-[20px] border px-3 py-3 text-left transition",
+                        "flex w-full items-start gap-2.5 rounded-md border px-2.5 py-2 text-left transition-colors",
                         notification.read
-                          ? "border-transparent bg-transparent hover:bg-muted/50"
-                          : "border-primary/20 bg-primary/10",
+                          ? "border-transparent bg-transparent hover:bg-muted/40"
+                          : "border-primary/20 bg-primary/5",
                       ].join(" ")}
                     >
-                      <Avatar className="h-10 w-10 border border-border">
+                      <Avatar className="h-8 w-8 border border-border shrink-0 mt-0.5">
                         <AvatarImage src={notification.creator.image || "/avatar.png"} />
                       </Avatar>
 
                       <div className="min-w-0 flex-1">
-                        <div className="flex items-start justify-between gap-3">
-                          <p className="text-sm font-medium leading-5">{copy.title}</p>
-                          <Icon className={`mt-0.5 h-4 w-4 shrink-0 ${copy.accent}`} />
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="text-xs font-semibold leading-4">{copy.title}</p>
+                          <Icon className={`mt-0.5 h-3.5 w-3.5 shrink-0 ${copy.accent}`} />
                         </div>
-                        <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
+                        <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
                           {copy.body}
                         </p>
-                        <p className="mt-2 text-[11px] uppercase tracking-[0.18em] text-muted-foreground/80">
+                        <p className="mt-1 text-[10px] tracking-wide text-muted-foreground/80">
                           {formatNotificationTime(notification.createdAt)}
                         </p>
                       </div>
@@ -324,10 +320,10 @@ function NotificationBell({
                 );
               })
             ) : (
-              <div className="rounded-[20px] border border-border bg-muted/30 px-4 py-8 text-center">
-                <BellIcon className="mx-auto h-6 w-6 text-muted-foreground" />
-                <p className="mt-3 text-sm font-medium">No notifications yet</p>
-                <p className="mt-1 text-xs text-muted-foreground">
+              <div className="rounded-md border border-border/60 bg-muted/10 px-4 py-6 text-center">
+                <BellIcon className="mx-auto h-5 w-5 text-muted-foreground" />
+                <p className="mt-2 text-sm font-medium">No notifications yet</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">
                   New follows, reactions, replies, and messages will appear here.
                 </p>
               </div>

@@ -176,8 +176,8 @@ function CommentItem({
           <AvatarImage src={comment.author.image || "/avatar.png"} />
         </Avatar>
         <div className="min-w-0 flex-1">
-          <div className="rounded-2xl bg-muted/60 px-3.5 py-2.5">
-            <div className="flex items-center gap-1.5">
+          <div className="rounded-md border border-border/50 bg-muted/40 px-3 py-2">
+            <div className="flex items-center gap-1.5 flex-wrap">
               <span className="font-semibold text-xs text-foreground">
                 {comment.author.name || comment.author.username}
               </span>
@@ -185,26 +185,28 @@ function CommentItem({
                 @{comment.author.username} · {formatPostDate(comment.createdAt)}
               </span>
             </div>
-            <p className="mt-1 whitespace-pre-wrap text-sm text-foreground/90 leading-relaxed">
+            <p className="mt-1 whitespace-pre-wrap text-sm text-foreground leading-relaxed">
               {comment.content}
             </p>
           </div>
 
-          <div className="mt-1.5 flex items-center gap-4 px-2">
+          <div className="mt-1 flex items-center gap-3 px-1">
             <button
               type="button"
               className={`inline-flex items-center gap-1 text-xs font-medium transition-colors ${
                 isLiked ? "text-rose-500 font-semibold" : "text-muted-foreground hover:text-rose-500"
               }`}
               onClick={() => onToggleLike(comment.id, isLiked)}
+              aria-label={isLiked ? "Unlike comment" : "Like comment"}
             >
               <HeartIcon className={`h-3.5 w-3.5 ${isLiked ? "fill-current" : ""}`} />
               <span>{comment.likes.length || ""}</span>
             </button>
             <button
               type="button"
-              className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-sky-500 transition-colors"
+              className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-primary transition-colors"
               onClick={() => setShowReplyBox((current) => !current)}
+              aria-label="Reply to comment"
             >
               <MessageSquareReplyIcon className="h-3.5 w-3.5" />
               <span>Reply</span>
@@ -212,12 +214,12 @@ function CommentItem({
           </div>
 
           {showReplyBox ? (
-            <div className="mt-2.5 flex items-center gap-2">
+            <div className="mt-2 flex items-center gap-2">
               <input
                 value={replyText}
                 onChange={(event) => setReplyText(event.target.value)}
                 placeholder="Write a reply..."
-                className="h-9 flex-1 rounded-full border border-border bg-muted/40 px-3.5 text-[16px] md:text-xs outline-none focus:border-primary"
+                className="h-8 flex-1 rounded-md border border-border bg-background px-3 text-xs outline-none focus:border-primary transition-colors"
                 disabled={isReplyPending}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !e.shiftKey) {
@@ -229,7 +231,7 @@ function CommentItem({
               <Button
                 type="button"
                 size="sm"
-                className="h-8 rounded-full px-3 text-xs"
+                className="h-8 rounded-md px-3 text-xs"
                 onClick={submitReply}
                 disabled={isReplyPending || !replyText.trim()}
               >
@@ -241,7 +243,7 @@ function CommentItem({
       </div>
 
       {comment.replies?.length ? (
-        <div className="ml-10 space-y-2 border-l-2 border-border/70 pl-3">
+        <div className="ml-9 space-y-2 border-l border-border pl-3">
           {comment.replies.map((reply) => (
             <CommentItem
               key={reply.id}
@@ -486,9 +488,9 @@ function PostCard({ post, viewerUserId }: PostCardProps) {
   }
 
   return (
-    <article className="p-4 sm:p-5 transition-colors hover:bg-muted/15">
+    <article className="p-4 sm:p-5 transition-colors hover:bg-muted/10 border-b border-border last:border-b-0">
       {post.repostedBy ? (
-        <div className="flex items-center gap-2 mb-2 pl-3 text-xs font-semibold text-muted-foreground">
+        <div className="flex items-center gap-2 mb-2.5 pl-3 text-xs font-medium text-muted-foreground">
           <Repeat2Icon className="h-3.5 w-3.5 text-emerald-500 stroke-[2.5]" />
           <span>
             {post.repostedBy.id === viewerUserId
@@ -504,13 +506,13 @@ function PostCard({ post, viewerUserId }: PostCardProps) {
             type="button"
             className="flex min-w-0 flex-1 items-center gap-3 text-left group"
           >
-            <Avatar className="h-10 w-10 sm:h-11 sm:w-11 border border-border shrink-0">
+            <Avatar className="h-10 w-10 border border-border shrink-0">
               <AvatarImage src={post.author.image || "/avatar.png"} />
             </Avatar>
 
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1.5 flex-wrap">
-                <span className="text-sm font-semibold text-foreground group-hover:underline">
+                <span className="text-[15px] font-semibold text-foreground group-hover:underline">
                   {post.author.name || post.author.username}
                 </span>
                 <span className="text-xs text-muted-foreground">
@@ -531,7 +533,8 @@ function PostCard({ post, viewerUserId }: PostCardProps) {
             size="icon"
             onClick={handleDeletePost}
             disabled={isDeletePending}
-            className="h-8 w-8 text-muted-foreground hover:text-destructive rounded-full"
+            className="h-8 w-8 text-muted-foreground hover:text-destructive rounded-md"
+            aria-label="Delete post"
           >
             {isDeletePending ? (
               <Loader2Icon className="h-4 w-4 animate-spin" />
@@ -543,13 +546,13 @@ function PostCard({ post, viewerUserId }: PostCardProps) {
       </div>
 
       {post.content ? (
-        <p className="mt-3 whitespace-pre-wrap text-sm sm:text-base leading-relaxed text-foreground">
+        <p className="mt-3 whitespace-pre-wrap text-[15px] leading-relaxed text-foreground">
           {post.content}
         </p>
       ) : null}
 
       {post.image ? (
-        <div className="relative mt-3 max-h-[480px] w-full overflow-hidden rounded-2xl border border-border bg-muted/20">
+        <div className="relative mt-3 max-h-[480px] w-full overflow-hidden rounded-md border border-border bg-muted/20">
           <Image
             src={post.image}
             alt="Post media"
@@ -562,18 +565,18 @@ function PostCard({ post, viewerUserId }: PostCardProps) {
       ) : null}
 
       {/* 4-Action Toolbar: 1. Like, 2. Comment, 3. Repost, 4. Favorite/Bookmark */}
-      <div className="mt-3.5 flex items-center justify-between max-w-md pt-1">
+      <div className="mt-3 flex items-center justify-between max-w-md pt-1">
         {/* 1. Like */}
         <button
           type="button"
           onClick={handleToggleLike}
-          className={`group flex items-center gap-1.5 py-1 px-1.5 rounded-full text-xs sm:text-sm font-medium transition-colors ${
+          className={`group flex items-center gap-1.5 py-1 px-1.5 rounded-md text-xs sm:text-sm font-medium transition-colors ${
             isLiked ? "text-rose-500 font-semibold" : "text-muted-foreground hover:text-rose-500"
           }`}
-          title="Like"
+          aria-label={isLiked ? "Unlike post" : "Like post"}
         >
-          <div className="flex h-9 w-9 items-center justify-center rounded-full transition-colors group-hover:bg-rose-500/10">
-            <HeartIcon className={`h-4 w-4 transition-transform group-hover:scale-110 ${isLiked ? "fill-current" : ""}`} />
+          <div className="flex h-8 w-8 items-center justify-center rounded-md transition-colors group-hover:bg-rose-500/10">
+            <HeartIcon className={`h-4 w-4 transition-transform group-hover:scale-105 ${isLiked ? "fill-current" : ""}`} />
           </div>
           <span>{likeCount || ""}</span>
         </button>
@@ -582,11 +585,11 @@ function PostCard({ post, viewerUserId }: PostCardProps) {
         <button
           type="button"
           onClick={() => setShowComments((current) => !current)}
-          className="group flex items-center gap-1.5 py-1 px-1.5 rounded-full text-xs sm:text-sm font-medium text-muted-foreground hover:text-sky-500 transition-colors"
-          title="Comments"
+          className="group flex items-center gap-1.5 py-1 px-1.5 rounded-md text-xs sm:text-sm font-medium text-muted-foreground hover:text-primary transition-colors"
+          aria-label="Toggle comments"
         >
-          <div className="flex h-9 w-9 items-center justify-center rounded-full transition-colors group-hover:bg-sky-500/10">
-            <MessageCircleIcon className="h-4 w-4 transition-transform group-hover:scale-110" />
+          <div className="flex h-8 w-8 items-center justify-center rounded-md transition-colors group-hover:bg-primary/10">
+            <MessageCircleIcon className="h-4 w-4 transition-transform group-hover:scale-105" />
           </div>
           <span>{commentCount || ""}</span>
         </button>
@@ -595,13 +598,13 @@ function PostCard({ post, viewerUserId }: PostCardProps) {
         <button
           type="button"
           onClick={handleToggleRepost}
-          className={`group flex items-center gap-1.5 py-1 px-1.5 rounded-full text-xs sm:text-sm font-medium transition-colors ${
+          className={`group flex items-center gap-1.5 py-1 px-1.5 rounded-md text-xs sm:text-sm font-medium transition-colors ${
             isReposted ? "text-emerald-500 font-semibold" : "text-muted-foreground hover:text-emerald-500"
           }`}
-          title="Repost"
+          aria-label={isReposted ? "Undo repost" : "Repost"}
         >
-          <div className="flex h-9 w-9 items-center justify-center rounded-full transition-colors group-hover:bg-emerald-500/10">
-            <Repeat2Icon className={`h-4 w-4 transition-transform group-hover:scale-110 ${isReposted ? "stroke-[2.5]" : ""}`} />
+          <div className="flex h-8 w-8 items-center justify-center rounded-md transition-colors group-hover:bg-emerald-500/10">
+            <Repeat2Icon className={`h-4 w-4 transition-transform group-hover:scale-105 ${isReposted ? "stroke-[2.5]" : ""}`} />
           </div>
           <span>{repostCount || ""}</span>
         </button>
@@ -610,13 +613,13 @@ function PostCard({ post, viewerUserId }: PostCardProps) {
         <button
           type="button"
           onClick={handleToggleBookmark}
-          className={`group flex items-center gap-1.5 py-1 px-1.5 rounded-full text-xs sm:text-sm font-medium transition-colors ${
+          className={`group flex items-center gap-1.5 py-1 px-1.5 rounded-md text-xs sm:text-sm font-medium transition-colors ${
             isBookmarked ? "text-amber-500 font-semibold" : "text-muted-foreground hover:text-amber-500"
           }`}
-          title="Favorite / Bookmark"
+          aria-label={isBookmarked ? "Remove bookmark" : "Bookmark post"}
         >
-          <div className="flex h-9 w-9 items-center justify-center rounded-full transition-colors group-hover:bg-amber-500/10">
-            <BookmarkIcon className={`h-4 w-4 transition-transform group-hover:scale-110 ${isBookmarked ? "fill-current" : ""}`} />
+          <div className="flex h-8 w-8 items-center justify-center rounded-md transition-colors group-hover:bg-amber-500/10">
+            <BookmarkIcon className={`h-4 w-4 transition-transform group-hover:scale-105 ${isBookmarked ? "fill-current" : ""}`} />
           </div>
           <span>{bookmarkCount || ""}</span>
         </button>
@@ -625,12 +628,12 @@ function PostCard({ post, viewerUserId }: PostCardProps) {
       {/* Inline Comments Section */}
       <div className="mt-3 space-y-3">
         {/* Comment input field */}
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2">
           <input
             value={commentText}
             onChange={(event) => setCommentText(event.target.value)}
             placeholder="Write a comment..."
-            className="h-10 flex-1 rounded-full border border-border bg-muted/40 px-4 text-[16px] md:text-sm outline-none placeholder:text-muted-foreground focus:border-primary transition-colors"
+            className="h-9 flex-1 rounded-md border border-border bg-background px-3 text-sm outline-none placeholder:text-muted-foreground/60 focus:border-primary transition-colors"
             disabled={isActionPending}
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
@@ -641,22 +644,23 @@ function PostCard({ post, viewerUserId }: PostCardProps) {
           />
           <Button
             type="button"
-            size="icon"
-            className="h-9 w-9 shrink-0 rounded-full shadow-none"
+            size="sm"
+            className="h-9 px-3 shrink-0 rounded-md font-medium shadow-none"
             onClick={handleCreateComment}
             disabled={isActionPending || !commentText.trim()}
+            aria-label="Send comment"
           >
             {isActionPending ? (
               <Loader2Icon className="h-4 w-4 animate-spin" />
             ) : (
-              <SendIcon className="h-4 w-4" />
+              "Reply"
             )}
           </Button>
         </div>
 
         {/* Existing comments list */}
         {showComments && comments.length > 0 ? (
-          <div className="mt-4 space-y-3 pt-2">
+          <div className="mt-3 space-y-2.5 pt-1">
             {comments.map((comment) => (
               <CommentItem
                 key={comment.id}
@@ -671,7 +675,7 @@ function PostCard({ post, viewerUserId }: PostCardProps) {
               <Button
                 variant="ghost"
                 size="sm"
-                className="w-full text-xs text-muted-foreground hover:text-foreground mt-1"
+                className="w-full text-xs text-muted-foreground hover:text-foreground mt-1 rounded-md h-8"
                 onClick={handleLoadMoreComments}
                 disabled={isLoadingMoreComments}
               >

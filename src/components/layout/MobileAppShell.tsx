@@ -10,7 +10,7 @@ export default async function MobileAppShell() {
   if (!context) return null; // Guests don't need the BottomNav (or maybe they do? but X doesn't really let you do much without logging in)
 
   const profileHref = context.profileHref;
-  const [{ unreadCount: unreadNotifications }, unreadMessages] = await Promise.all([
+  const [{ notifications, unreadCount: unreadNotifications }, unreadMessages] = await Promise.all([
     getNotifications(),
     getChatUnreadCount(),
   ]);
@@ -18,8 +18,10 @@ export default async function MobileAppShell() {
   return (
     <>
       <MobilePostFAB userImage={context.dbUser.image} />
-      <BottomNav 
+      <BottomNav
+        userId={context.dbUser.id}
         profileHref={profileHref} 
+        initialNotifications={notifications}
         unreadNotifications={unreadNotifications} 
         unreadMessages={unreadMessages} 
       />

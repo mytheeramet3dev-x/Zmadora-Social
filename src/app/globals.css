@@ -19,67 +19,64 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 210 25% 8%;
+    --background: 210 20% 98%;
+    --foreground: 222 30% 12%;
     --card: 0 0% 100%;
-    --card-foreground: 210 25% 8%;
+    --card-foreground: 222 30% 12%;
     --popover: 0 0% 100%;
-    --popover-foreground: 210 25% 8%;
-    --primary: 204 88% 53%;
+    --popover-foreground: 222 30% 12%;
+    --primary: 222 75% 52%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 210 20% 96%;
-    --secondary-foreground: 210 25% 8%;
-    --muted: 210 20% 96%;
-    --muted-foreground: 210 10% 40%;
-    --accent: 210 20% 96%;
-    --accent-foreground: 210 25% 8%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 210 15% 90%;
-    --input: 210 15% 90%;
-    --ring: 204 88% 53%;
-    --chart-1: 204 88% 53%;
-    --chart-2: 168 79% 48%;
-    --chart-3: 200 90% 55%;
+    --secondary: 210 18% 96%;
+    --secondary-foreground: 222 30% 12%;
+    --muted: 210 18% 96%;
+    --muted-foreground: 215 12% 42%;
+    --accent: 210 18% 93%;
+    --accent-foreground: 222 30% 12%;
+    --destructive: 0 68% 52%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 214 18% 88%;
+    --input: 214 18% 88%;
+    --ring: 222 75% 52%;
+    --chart-1: 222 75% 52%;
+    --chart-2: 154 58% 38%;
+    --chart-3: 30 85% 46%;
     --chart-4: 270 90% 60%;
-    --chart-5: 330 81% 60%;
-    --glass: 0 0% 100%;
-    --glass-strong: 210 20% 96%;
-    --glass-border: 210 15% 90%;
-    --glass-highlight: 0 0% 100%;
-    --shadow-color: 210 25% 8%;
-    --radius: 1rem;
+    --chart-5: 0 68% 52%;
+    --radius: 0.75rem;
   }
   .dark {
-    --background: 228 35% 8%;
-    --foreground: 200 10% 95%;
-    --card: 228 35% 8%;
-    --card-foreground: 200 10% 95%;
-    --popover: 228 35% 8%;
-    --popover-foreground: 200 10% 95%;
-    --primary: 270 90% 65%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 228 30% 15%;
-    --secondary-foreground: 200 10% 95%;
-    --muted: 228 30% 15%;
-    --muted-foreground: 200 10% 60%;
-    --accent: 228 30% 18%;
-    --accent-foreground: 200 10% 95%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 228 30% 18%;
-    --input: 228 30% 18%;
-    --ring: 270 90% 65%;
-    --chart-1: 270 90% 65%;
-    --chart-2: 190 90% 55%;
-    --chart-3: 320 80% 60%;
-    --chart-4: 210 90% 60%;
-    --chart-5: 150 80% 50%;
-    --glass: 228 35% 8%;
-    --glass-strong: 228 30% 15%;
-    --glass-border: 228 30% 18%;
-    --glass-highlight: 270 90% 65%;
-    --shadow-color: 0 0% 0%;
+    --background: 222 28% 8%;
+    --foreground: 210 20% 96%;
+    --card: 222 25% 11%;
+    --card-foreground: 210 20% 96%;
+    --popover: 222 25% 11%;
+    --popover-foreground: 210 20% 96%;
+    --primary: 222 85% 67%;
+    --primary-foreground: 222 35% 10%;
+    --secondary: 222 22% 15%;
+    --secondary-foreground: 210 20% 96%;
+    --muted: 222 22% 15%;
+    --muted-foreground: 215 12% 66%;
+    --accent: 222 22% 19%;
+    --accent-foreground: 210 20% 96%;
+    --destructive: 0 68% 52%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 220 18% 23%;
+    --input: 220 18% 23%;
+    --ring: 222 85% 67%;
+    --chart-1: 222 85% 67%;
+    --chart-2: 154 58% 48%;
+    --chart-3: 30 85% 56%;
+    --chart-4: 270 90% 65%;
+    --chart-5: 0 68% 62%;
+  }
+}
+
+@layer components {
+  .glass-panel {
+    @apply border border-border bg-card/85 backdrop-blur-md;
+    box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.05), 0 1px 2px -1px rgb(0 0 0 / 0.05);
   }
 }
 
@@ -92,9 +89,24 @@
     @apply bg-background text-foreground;
     background-color: hsl(var(--background));
     min-height: 100vh;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   }
 
-  .dark body {
-    background-color: hsl(var(--background));
+  /* Accessibility focus styles */
+  :focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+  }
+
+  /* Support reduced motion preference */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    ::before,
+    ::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 }

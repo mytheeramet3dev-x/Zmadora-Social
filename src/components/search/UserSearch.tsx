@@ -84,8 +84,8 @@ function UserSearch({ className }: UserSearchProps) {
 
   return (
     <div ref={containerRef} className={className}>
-      <div className="relative flex h-10 items-center rounded-full border border-border bg-muted/50 px-2">
-        <SearchIcon className="h-4 w-4 text-muted-foreground" />
+      <div className="relative flex h-9 items-center rounded-md border border-border bg-card px-2.5">
+        <SearchIcon className="h-4 w-4 text-muted-foreground shrink-0" />
         <input
           value={query}
           onChange={(event) => setQuery(event.target.value)}
@@ -101,14 +101,14 @@ function UserSearch({ className }: UserSearchProps) {
               setIsOpen(true);
             }
           }}
-          placeholder="Search users"
-          className="w-full bg-transparent px-3 text-[16px] md:text-sm outline-none placeholder:text-muted-foreground"
+          placeholder="Search users..."
+          className="w-full bg-transparent px-2 text-xs outline-none placeholder:text-muted-foreground/60"
         />
         <Button
           type="button"
           size="sm"
           variant="ghost"
-          className="h-8 px-3"
+          className="h-7 px-2 text-xs rounded-md"
           onClick={() => {
             setDebouncedQuery(query.trim());
             runSearch(query);
@@ -120,13 +120,13 @@ function UserSearch({ className }: UserSearchProps) {
       </div>
 
       {isOpen ? (
-        <div className="absolute left-0 right-0 top-12 z-50 rounded-[24px] border border-border bg-popover p-2 shadow-2xl">
+        <div className="absolute left-0 right-0 top-10 z-50 rounded-md border border-border bg-popover p-1.5 shadow-md">
           {isPending ? (
-            <div className="px-3 py-4 text-sm text-muted-foreground">
+            <div className="px-3 py-3 text-xs text-muted-foreground">
               Searching...
             </div>
           ) : results.length > 0 ? (
-            <div className="space-y-2">
+            <div className="space-y-1">
               {results.map((user) => (
                 <Link
                   key={user.id}
@@ -135,16 +135,16 @@ function UserSearch({ className }: UserSearchProps) {
                     setIsOpen(false);
                     setQuery("");
                   }}
-                  className="flex items-center gap-3 rounded-2xl px-3 py-3 transition hover:bg-muted/50"
+                  className="flex items-center gap-2.5 rounded-md px-2.5 py-2 transition-colors hover:bg-accent/60"
                 >
-                  <Avatar className="h-10 w-10 border border-border">
+                  <Avatar className="h-8 w-8 border border-border shrink-0">
                     <AvatarImage src={user.image || "/avatar.png"} />
                   </Avatar>
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-medium">
+                    <p className="truncate text-xs font-semibold text-foreground">
                       {user.name || user.username}
                     </p>
-                    <p className="truncate text-xs text-muted-foreground">
+                    <p className="truncate text-[11px] text-muted-foreground">
                       @{user.username}
                     </p>
                   </div>
@@ -152,7 +152,7 @@ function UserSearch({ className }: UserSearchProps) {
               ))}
             </div>
           ) : (
-            <div className="px-3 py-4 text-sm text-muted-foreground">
+            <div className="px-3 py-3 text-xs text-muted-foreground">
               No users found
             </div>
           )}

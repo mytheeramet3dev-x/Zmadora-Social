@@ -382,19 +382,19 @@ function ChatPanel({ initialState }: ChatPanelProps) {
                 </Button>
               </div>
 
-              <div className="mt-4 flex h-10 items-center rounded-full border border-border bg-muted/50 px-3">
+              <div className="mt-3 flex h-9 items-center rounded-md border border-border bg-background px-3">
                 <SearchIcon className="h-4 w-4 text-muted-foreground shrink-0" />
                 <input
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
-                  placeholder="Search contacts"
-                  className="w-full bg-transparent px-3 text-[16px] md:text-sm outline-none placeholder:text-muted-foreground"
+                  placeholder="Search contacts..."
+                  className="w-full bg-transparent px-2 text-xs outline-none placeholder:text-muted-foreground/60"
                 />
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto px-2 py-3">
-              <div className="space-y-2">
+            <div className="flex-1 overflow-y-auto px-2 py-2">
+              <div className="space-y-1">
                 {filteredContacts.length > 0 ? (
                   filteredContacts.map((contact) => {
                     const isActive = contact.id === activeContact?.id;
@@ -405,25 +405,25 @@ function ChatPanel({ initialState }: ChatPanelProps) {
                         type="button"
                         onClick={() => handleSelectContact(contact.id)}
                         className={[
-                          "relative flex items-center gap-3 w-full rounded-2xl p-3 text-left transition",
-                          isActive ? "bg-muted" : "hover:bg-muted/50",
+                          "relative flex items-center gap-2.5 w-full rounded-md p-2 text-left transition-colors",
+                          isActive ? "bg-accent text-foreground" : "hover:bg-accent/50 text-foreground/80",
                           isCollapsed ? "xl:justify-center" : "",
                         ].join(" ")}
                         title={isCollapsed ? (contact.name || contact.username) : undefined}
                       >
-                        <Avatar className={`border border-border shrink-0 ${isCollapsed ? 'xl:h-10 xl:w-10 h-11 w-11' : 'h-11 w-11'}`}>
+                        <Avatar className={`border border-border shrink-0 ${isCollapsed ? 'xl:h-8 xl:w-8 h-9 w-9' : 'h-9 w-9'}`}>
                           <AvatarImage src={contact.image || "/avatar.png"} />
                         </Avatar>
                         <div className={`min-w-0 flex-1 ${isCollapsed ? 'xl:hidden' : 'block'}`}>
                           <p className="truncate text-xs font-semibold text-foreground">
                             {contact.name || contact.username}
                           </p>
-                          <p className="mt-1 truncate text-[11px] text-muted-foreground/80">
+                          <p className="truncate text-[11px] text-muted-foreground mt-0.5">
                             {contact.lastMessage || "Tap to start chatting"}
                           </p>
                         </div>
                         {contact.unreadCount > 0 ? (
-                          <span className="absolute flex h-5 min-w-5 items-center justify-center rounded-full bg-sky-500 px-1 text-[10px] font-semibold text-white top-2 right-2">
+                          <span className="absolute flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground top-2 right-2">
                             {contact.unreadCount > 9 ? "9+" : contact.unreadCount}
                           </span>
                         ) : null}
@@ -432,7 +432,7 @@ function ChatPanel({ initialState }: ChatPanelProps) {
                   })
                 ) : (
                   <div className="flex flex-col items-center justify-center py-10 text-muted-foreground">
-                    <UsersIcon className="h-8 w-8 opacity-20 mb-3" />
+                    <UsersIcon className="h-6 w-6 opacity-30 mb-2" />
                     <p className="text-xs">No contacts found</p>
                   </div>
                 )}
@@ -449,36 +449,37 @@ function ChatPanel({ initialState }: ChatPanelProps) {
           <div className={`flex-1 min-w-0 flex-col ${activeContact ? "flex" : "hidden xl:flex"}`}>
             {activeContact ? (
               <>
-                <div className="flex items-center justify-between border-b border-border px-3 sm:px-4 py-3 sm:py-4">
+                <div className="flex items-center justify-between border-b border-border px-3 sm:px-4 py-2.5 sm:py-3">
                   <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                     {/* Mobile Back Button to Contacts List */}
                     <Button
                       variant="ghost"
                       size="icon"
                       onClick={() => setActiveContactId(null)}
-                      className="h-8 w-8 rounded-full xl:hidden shrink-0"
+                      className="h-8 w-8 rounded-md xl:hidden shrink-0"
                       aria-label="Back to contacts"
                     >
                       <ArrowLeftIcon className="h-4 w-4" />
                     </Button>
 
-                    <Avatar className="h-9 w-9 sm:h-11 sm:w-11 border border-border shrink-0">
+                    <Avatar className="h-8 w-8 sm:h-9 sm:w-9 border border-border shrink-0">
                       <AvatarImage src={activeContact.image || "/avatar.png"} />
                     </Avatar>
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold">
+                      <p className="truncate text-xs sm:text-sm font-semibold">
                         {activeContact.name || activeContact.username}
                       </p>
-                      <p className="truncate text-xs text-muted-foreground">@{activeContact.username}</p>
+                      <p className="truncate text-[11px] text-muted-foreground">@{activeContact.username}</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+                  <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
                     <Button 
                       onClick={() => startCall(activeContact.id, "AUDIO")}
                       variant="ghost" 
                       size="icon" 
-                      className="h-8 w-8 sm:h-9 sm:w-9 rounded-full"
+                      className="h-8 w-8 rounded-md text-muted-foreground hover:text-foreground"
                       title="Audio Call"
+                      aria-label="Audio call"
                     >
                       <PhoneIcon className="h-4 w-4" />
                     </Button>
@@ -486,8 +487,9 @@ function ChatPanel({ initialState }: ChatPanelProps) {
                       onClick={() => startCall(activeContact.id, "VIDEO")}
                       variant="ghost" 
                       size="icon" 
-                      className="h-8 w-8 sm:h-9 sm:w-9 rounded-full"
+                      className="h-8 w-8 rounded-md text-muted-foreground hover:text-foreground"
                       title="Video Call"
+                      aria-label="Video call"
                     >
                       <VideoIcon className="h-4 w-4" />
                     </Button>
@@ -496,7 +498,7 @@ function ChatPanel({ initialState }: ChatPanelProps) {
                       variant="ghost"
                       size="icon"
                       onClick={toggleChat}
-                      className="h-8 w-8 rounded-full xl:hidden"
+                      className="h-8 w-8 rounded-md xl:hidden"
                       aria-label="Close chat"
                     >
                       <XIcon className="h-4 w-4" />
@@ -504,9 +506,9 @@ function ChatPanel({ initialState }: ChatPanelProps) {
                   </div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto px-4 py-4">
+                <div className="flex-1 overflow-y-auto px-4 py-3">
                   {activeMessages.length > 0 ? (
-                    <div className="space-y-3">
+                    <div className="space-y-2.5">
                       {activeMessages.map((message) => {
                         const isMine = message.senderId === viewerUserId;
 
@@ -517,17 +519,17 @@ function ChatPanel({ initialState }: ChatPanelProps) {
                           >
                             <div
                               className={[
-                                "max-w-[85%] rounded-3xl px-4 py-3 text-sm",
+                                "max-w-[85%] rounded-md px-3.5 py-2 text-sm leading-relaxed",
                                 isMine
                                   ? "bg-primary text-primary-foreground"
-                                  : "bg-muted text-foreground",
+                                  : "bg-muted text-foreground border border-border/50",
                               ].join(" ")}
                             >
-                              <p className="leading-6">{message.content}</p>
+                              <p className="whitespace-pre-wrap">{message.content}</p>
                               <p
                                 className={[
-                                  "mt-1 text-[11px]",
-                                  isMine ? "text-primary-foreground/70" : "text-muted-foreground",
+                                  "mt-1 text-[10px]",
+                                  isMine ? "text-primary-foreground/75" : "text-muted-foreground",
                                 ].join(" ")}
                               >
                                 {formatMessageTime(message.createdAt)}
@@ -538,35 +540,39 @@ function ChatPanel({ initialState }: ChatPanelProps) {
                       })}
                     </div>
                   ) : (
-                    <div className="flex h-full flex-col items-center justify-center rounded-[24px] border border-dashed border-border bg-muted/30 px-6 text-center">
-                      <MessageCircleMoreIcon className="h-6 w-6 text-sky-400" />
-                      <p className="mt-3 text-sm font-medium">No messages yet</p>
-                      <p className="mt-1 text-xs text-muted-foreground">
+                    <div className="flex h-full flex-col items-center justify-center rounded-md border border-dashed border-border/70 bg-muted/10 px-6 py-8 text-center">
+                      <MessageCircleMoreIcon className="h-6 w-6 text-muted-foreground mb-2" />
+                      <p className="text-sm font-medium">No messages yet</p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">
                         Start the conversation with {activeContact.name || activeContact.username}.
                       </p>
                     </div>
                   )}
                 </div>
 
-                <div className="border-t border-border px-3 sm:px-4 py-3 sm:py-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))]">
-                  <div className="rounded-[24px] border border-border bg-muted/50 p-3">
-                    <div className="mb-2 flex items-center gap-2 text-xs text-muted-foreground">
-                      <MessageCircleMoreIcon className="h-3.5 w-3.5" />
-                      Send a new message
-                    </div>
-                    <div className="flex items-end gap-2 sm:gap-3">
+                <div className="border-t border-border px-3 sm:px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))]">
+                  <div className="rounded-md border border-border bg-card p-2.5">
+                    <div className="flex items-end gap-2">
                       <Textarea
                         value={draft}
                         onChange={(event) => setDraft(event.target.value)}
                         placeholder={`Message ${activeContact.name || activeContact.username}...`}
-                        className="min-h-[60px] sm:min-h-[84px] text-[16px] md:text-sm border-none bg-transparent px-1 py-1 shadow-none focus-visible:ring-0"
+                        className="min-h-[50px] sm:min-h-[64px] text-xs sm:text-sm border-none bg-transparent px-1 py-1 shadow-none focus-visible:ring-0 resize-none leading-relaxed"
                         disabled={isSendPending}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && !e.shiftKey) {
+                            e.preventDefault();
+                            handleSend();
+                          }
+                        }}
                       />
                       <Button
                         type="button"
                         onClick={handleSend}
                         disabled={!draft.trim() || isSendPending}
-                        className="h-10 w-10 sm:h-11 sm:w-11 rounded-full p-0 shrink-0"
+                        size="sm"
+                        className="h-8 px-3 rounded-md shrink-0 font-medium shadow-none"
+                        aria-label="Send message"
                       >
                         <SendHorizonalIcon className="h-4 w-4" />
                       </Button>
@@ -575,7 +581,7 @@ function ChatPanel({ initialState }: ChatPanelProps) {
                 </div>
               </>
             ) : (
-              <div className="flex h-full items-center justify-center px-6 text-center text-sm text-muted-foreground">
+              <div className="flex h-full items-center justify-center px-6 text-center text-xs text-muted-foreground">
                 Select a contact to start chatting.
               </div>
             )}
