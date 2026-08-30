@@ -106,7 +106,7 @@ function ChatPanel({ initialState }: ChatPanelProps) {
   const [search, setSearch] = useState("");
   const [isSendPending, startSendTransition] = useTransition();
   const activeContactIdRef = useRef<string | null>(initialState.activeContactId);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
 
   const [sidebarWidth, setSidebarWidth] = useState(80);
   const sidebarRef = useRef<HTMLDivElement>(null);
@@ -216,7 +216,9 @@ function ChatPanel({ initialState }: ChatPanelProps) {
   const activeMessages = activeContactId ? messagesByContact[activeContactId] || [] : [];
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (messagesContainerRef.current) {
+      messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+    }
   }, [activeMessages.length, activeContactId]);
 
   useEffect(() => {
@@ -567,7 +569,7 @@ function ChatPanel({ initialState }: ChatPanelProps) {
                   </div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto px-4 py-3">
+                <div ref={messagesContainerRef} className="flex-1 overflow-y-auto px-4 py-3">
                   {activeMessages.length > 0 ? (
                     <div className="space-y-2.5">
                       {activeMessages.map((message) => {
@@ -599,7 +601,6 @@ function ChatPanel({ initialState }: ChatPanelProps) {
                           </div>
                         );
                       })}
-                      <div ref={messagesEndRef} />
                     </div>
                   ) : (
                     <div className="flex h-full flex-col items-center justify-center rounded-md border border-dashed border-border/70 bg-muted/10 px-6 py-8 text-center">
