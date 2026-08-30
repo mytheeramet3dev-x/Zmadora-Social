@@ -35,7 +35,7 @@ export default function MobileChatFAB({ initialUnreadCount = 0 }: MobileChatFABP
       aria-label={isChatOpen ? "Close chat" : "Open chat"}
       className={`fixed bottom-[calc(76px+env(safe-area-inset-bottom,0px))] md:bottom-6 right-4 md:right-6 h-12 w-12 md:h-13 md:w-13 rounded-full shadow-2xl transition-all duration-200 active:scale-95 flex items-center justify-center cursor-pointer ${
         isChatOpen
-          ? "z-[10000] bg-destructive text-destructive-foreground hover:bg-destructive/90 ring-4 ring-background"
+          ? "hidden sm:flex z-[10000] bg-destructive text-destructive-foreground hover:bg-destructive/90 ring-4 ring-background"
           : "z-40 bg-primary text-primary-foreground hover:bg-primary/90 shadow-primary/30"
       }`}
     >
