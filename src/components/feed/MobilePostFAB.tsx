@@ -14,7 +14,7 @@ export default function MobilePostFAB({ userImage }: { userImage?: string | null
       <SheetTrigger asChild>
         <Button
           size="icon"
-          className="md:hidden fixed bottom-[calc(76px+env(safe-area-inset-bottom,0px))] right-4 h-12 w-12 rounded-full shadow-md z-40 bg-primary text-primary-foreground hover:bg-primary/90 transition-transform active:scale-95"
+          className="md:hidden fixed bottom-[calc(136px+env(safe-area-inset-bottom,0px))] right-4 h-12 w-12 rounded-full shadow-md z-40 bg-primary text-primary-foreground hover:bg-primary/90 transition-transform active:scale-95"
           aria-label="Create new post"
         >
           <FeatherIcon className="h-5 w-5" />

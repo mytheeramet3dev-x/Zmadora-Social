@@ -15,22 +15,5 @@ export default async function SettingsPage() {
     redirect("/");
   }
 
-  const dbUser = await prisma.user.findUnique({
-    where: { id: context.dbUser.id },
-    select: {
-      id: true,
-      name: true,
-      username: true,
-      bio: true,
-      location: true,
-      website: true,
-      image: true,
-    },
-  });
-
-  if (!dbUser) {
-    redirect("/");
-  }
-
-  return <SettingsContainer user={dbUser} />;
+  return <SettingsContainer user={context.dbUser} />;
 }

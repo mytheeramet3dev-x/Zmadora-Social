@@ -1,9 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { HomeIcon, SearchIcon, UserIcon, MessageCircleIcon } from "lucide-react";
+import { HomeIcon, SearchIcon, UserIcon, SettingsIcon } from "lucide-react";
 import { usePathname } from "next/navigation";
-import { useLayoutChrome } from "@/components/layout/LayoutChromeContext";
 import NotificationBell, { type NotificationItem } from "@/components/notifications/NotificationBell";
 
 type BottomNavProps = {
@@ -11,7 +10,6 @@ type BottomNavProps = {
   profileHref: string;
   initialNotifications: NotificationItem[];
   unreadNotifications: number;
-  unreadMessages: number;
 };
 
 export default function BottomNav({
@@ -19,10 +17,8 @@ export default function BottomNav({
   profileHref,
   initialNotifications,
   unreadNotifications,
-  unreadMessages,
 }: BottomNavProps) {
   const pathname = usePathname();
-  const { toggleChat, isChatOpen } = useLayoutChrome();
 
   const navItems = [
     { href: "/", icon: HomeIcon, label: "Home" },
@@ -60,24 +56,22 @@ export default function BottomNav({
         />
       </div>
 
-      {/* Messages */}
-      <button
-        type="button"
-        onClick={toggleChat}
-        aria-label={isChatOpen ? "Close messages" : "Open messages"}
-        className={`relative flex flex-col items-center justify-center w-full h-full min-h-[44px] transition-colors ${
-          isChatOpen ? "text-primary" : "text-muted-foreground hover:text-foreground"
-        }`}
-      >
-        <div className="relative">
-          <MessageCircleIcon className={`w-5 h-5 ${isChatOpen ? "stroke-[2.5]" : "stroke-2"}`} />
-          {unreadMessages > 0 && (
-            <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground">
-              {unreadMessages > 9 ? "9+" : unreadMessages}
-            </span>
-          )}
-        </div>
-      </button>
+      {/* Settings */}
+      {(() => {
+        const isSettingsActive = pathname === "/settings";
+        return (
+          <Link
+            href="/settings"
+            prefetch={true}
+            aria-label="Settings"
+            className={`flex flex-col items-center justify-center w-full h-full min-h-[44px] transition-colors ${
+              isSettingsActive ? "text-primary" : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <SettingsIcon className={`w-5 h-5 ${isSettingsActive ? "stroke-[2.5]" : "stroke-2"}`} />
+          </Link>
+        );
+      })()}
 
       {/* Profile */}
       {(() => {
