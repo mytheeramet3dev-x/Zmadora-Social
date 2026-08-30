@@ -37,7 +37,7 @@ export default function ActiveCallScreen() {
   const isVideo = activeCall.callType === "VIDEO";
 
   return (
-    <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-black/90 backdrop-blur-xl">
+    <div className="fixed inset-0 z-[99999] flex flex-col items-center justify-center bg-black/90 backdrop-blur-xl">
       <div className="relative flex h-full w-full max-w-5xl flex-col justify-center p-4">
         {activeCall.status === "CONNECTING" && (
           <div className="absolute inset-0 flex flex-col items-center justify-center text-white z-10">

@@ -181,11 +181,28 @@ function FeedList({
       window.scrollTo({ top: 0, behavior: "smooth" });
     };
 
+    const handleRevalidated = (event: Event) => {
+      const customEvent = event as CustomEvent<{ posts: any[]; nextCursor: string | null }>;
+      if (customEvent.detail?.posts && Array.isArray(customEvent.detail.posts)) {
+        const freshNormalized = customEvent.detail.posts.map((p) => normalizeFeedPost(p));
+        setPosts((current) => {
+          const existingIds = new Set(current.map((p) => p.id));
+          const newPostsOnly = freshNormalized.filter((p) => !existingIds.has(p.id));
+          if (newPostsOnly.length === 0) return current;
+          const merged = [...newPostsOnly, ...current];
+          saveClientFeedStore(merged, nextCursor, hasMore, window.scrollY);
+          return merged;
+        });
+      }
+    };
+
     window.addEventListener("social:refresh-feed", handleRefresh);
+    window.addEventListener("social:feed-revalidated", handleRevalidated);
     return () => {
       window.removeEventListener("social:refresh-feed", handleRefresh);
+      window.removeEventListener("social:feed-revalidated", handleRevalidated);
     };
-  }, [initialCursor, initialPosts]);
+  }, [hasMore, initialCursor, initialPosts, nextCursor]);
 
   // Realtime subscription synced with both React State and in-memory FeedStore
   useEffect(() => {

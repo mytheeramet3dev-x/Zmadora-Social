@@ -14,31 +14,14 @@ function SidebarLayout({ sidebar, rightRail, children }: SidebarLayoutProps) {
   const { isSidebarOpen, isChatOpen, chatWidth, setChatWidth } = useLayoutChrome();
 
   const gridClassName = useMemo(() => {
-    if (!rightRail) {
-      return isSidebarOpen
-        ? "lg:grid-cols-[80px_minmax(0,1fr)] xl:grid-cols-[260px_minmax(0,1fr)]"
-        : "lg:grid-cols-[minmax(0,1fr)]";
-    }
-
-    if (isSidebarOpen && isChatOpen) {
-      return "lg:grid-cols-[80px_minmax(0,1fr)] xl:[grid-template-columns:260px_minmax(0,1fr)_var(--chat-width)]";
-    }
-
-    if (isSidebarOpen && !isChatOpen) {
-      return "lg:grid-cols-[80px_minmax(0,1fr)] xl:grid-cols-[260px_minmax(0,1fr)]";
-    }
-
-    if (!isSidebarOpen && isChatOpen) {
-      return "lg:grid-cols-[minmax(0,1fr)] xl:[grid-template-columns:minmax(0,1fr)_var(--chat-width)]";
-    }
-
-    return "lg:grid-cols-[minmax(0,1fr)]";
-  }, [chatWidth, isChatOpen, isSidebarOpen, rightRail]);
+    return isSidebarOpen
+      ? "lg:grid-cols-[80px_minmax(0,1fr)] xl:grid-cols-[260px_minmax(0,1fr)]"
+      : "lg:grid-cols-[minmax(0,1fr)]";
+  }, [isSidebarOpen]);
 
   return (
     <div
       className={["grid grid-cols-1 items-start gap-0", gridClassName].join(" ")}
-      style={{ "--chat-width": `${chatWidth}px` } as React.CSSProperties}
     >
       {isSidebarOpen ? (
         <aside className="hidden lg:block sticky top-0 h-screen shrink-0">
@@ -49,40 +32,9 @@ function SidebarLayout({ sidebar, rightRail, children }: SidebarLayoutProps) {
       <div className="min-w-0">{children}</div>
 
       {rightRail && isChatOpen ? (
-        <>
-          {/* Mobile Fullscreen Overlay for Chat */}
-          <div className="fixed inset-0 z-[100] bg-background xl:hidden flex flex-col h-[100dvh] max-h-[100dvh] w-full overflow-hidden pt-[env(safe-area-inset-top,0px)] pb-[env(safe-area-inset-bottom,0px)]">
-            {rightRail}
-          </div>
-
-          {/* Desktop Right Rail */}
-          <aside className="relative hidden xl:block sticky top-0 h-screen shrink-0">
-            <div
-              role="separator"
-              aria-orientation="vertical"
-              className="absolute left-0 top-0 z-20 h-full w-3 cursor-col-resize"
-              onMouseDown={(event) => {
-                event.preventDefault();
-                const startX = event.clientX;
-                const startWidth = chatWidth;
-
-                const handleMouseMove = (moveEvent: MouseEvent) => {
-                  const delta = startX - moveEvent.clientX;
-                  setChatWidth(startWidth + delta);
-                };
-
-                const handleMouseUp = () => {
-                  window.removeEventListener("mousemove", handleMouseMove);
-                  window.removeEventListener("mouseup", handleMouseUp);
-                };
-
-                window.addEventListener("mousemove", handleMouseMove);
-                window.addEventListener("mouseup", handleMouseUp);
-              }}
-            />
-            {rightRail}
-          </aside>
-        </>
+        <div className="fixed inset-0 sm:inset-auto sm:bottom-[calc(76px+env(safe-area-inset-bottom,0px))] md:bottom-22 sm:right-6 sm:w-[380px] sm:h-[560px] sm:max-h-[calc(100dvh-120px)] sm:rounded-2xl sm:border border-border bg-background/95 backdrop-blur-xl shadow-2xl z-[9999] flex flex-col overflow-hidden pt-[env(safe-area-inset-top,0px)] sm:pt-0 pb-[env(safe-area-inset-bottom,0px)] sm:pb-0 animate-in fade-in zoom-in-95 sm:zoom-in-95 duration-200">
+          {rightRail}
+        </div>
       ) : null}
     </div>
   );

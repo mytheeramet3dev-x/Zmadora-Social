@@ -14,7 +14,7 @@ interface IncomingCallModalProps {
 
 export default function IncomingCallModal({ caller, type, onAccept, onReject }: IncomingCallModalProps) {
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/50 backdrop-blur-sm">
       <div className="flex w-80 flex-col items-center rounded-3xl border border-white/10 bg-card p-6 shadow-2xl animate-in zoom-in-95">
         <div className="mb-4 text-center">
           <Avatar className="mx-auto h-24 w-24 border-4 border-primary/20">

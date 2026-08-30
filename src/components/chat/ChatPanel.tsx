@@ -375,282 +375,229 @@ function ChatPanel({ initialState }: ChatPanelProps) {
   };
 
   return (
-    <div className="h-full xl:py-4 xl:pl-3">
-      <div className="h-full xl:h-[calc(100vh-2rem)] overflow-hidden xl:rounded-2xl xl:border border-border bg-background shadow-sm flex flex-col">
-        <div className="flex flex-1 min-h-0">
-          {/* Contacts Sidebar Column */}
-          <div
-            ref={sidebarRef}
-            style={{ width: undefined }}
-            className={`relative flex-col border-r border-border shrink-0 h-full ${
-              activeContact ? "hidden xl:flex" : "flex w-full"
-            } xl:w-[var(--sidebar-w,80px)]`}
-          >
-            <div className="border-b border-border p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <p className="text-sm font-semibold">Messages & Calls</p>
-                  <div className="rounded-full bg-sky-500/15 px-2.5 py-1 text-[11px] font-medium text-sky-300">
-                    {contacts.length}
-                  </div>
-                </div>
+    <div className="h-full w-full flex flex-col bg-background/95 backdrop-blur-md overflow-hidden text-foreground">
+      {activeContact ? (
+        /* Conversation Detail View */
+        <div className="h-full w-full flex flex-col min-h-0">
+          {/* Conversation Header */}
+          <div className="flex items-center justify-between border-b border-border px-3 sm:px-4 py-2.5 bg-card/80 backdrop-blur-md shrink-0 shadow-xs z-10">
+            <div className="flex items-center gap-2 sm:gap-2.5 min-w-0 flex-1">
+              {/* Back button to contacts list */}
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setActiveContactId(null)}
+                className="h-8 w-8 rounded-full shrink-0 text-muted-foreground hover:text-foreground hover:bg-accent"
+                aria-label="Back to contacts"
+                title="Back to contacts"
+              >
+                <ArrowLeftIcon className="h-4 w-4" />
+              </Button>
 
-                {/* Mobile Close Button */}
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={toggleChat}
-                  className="h-8 w-8 rounded-full border-border bg-card shadow-xs xl:hidden hover:bg-destructive hover:text-destructive-foreground hover:border-destructive transition-colors"
-                  aria-label="Close chat"
-                  title="Close chat"
-                >
-                  <XIcon className="h-4 w-4" />
-                </Button>
-              </div>
+              <Avatar className="h-8 w-8 border border-border shrink-0">
+                <AvatarImage src={activeContact.image || "/avatar.png"} />
+              </Avatar>
 
-              <div className="mt-3 flex h-9 items-center rounded-md border border-border bg-background px-3">
-                <SearchIcon className="h-4 w-4 text-muted-foreground shrink-0" />
-                <input
-                  value={search}
-                  onChange={(event) => setSearch(event.target.value)}
-                  placeholder="Search contacts..."
-                  className="w-full bg-transparent px-2 text-xs outline-none placeholder:text-muted-foreground/60"
-                />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-xs sm:text-sm font-semibold text-foreground leading-tight">
+                  {activeContact.name || activeContact.username}
+                </p>
+                <p className="truncate text-[10px] sm:text-[11px] text-muted-foreground">@{activeContact.username}</p>
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto px-2 py-2">
-              <div className="space-y-1">
-                {filteredContacts.length > 0 ? (
-                  filteredContacts.map((contact) => {
-                    const isActive = contact.id === activeContact?.id;
+            {/* Header Action Buttons: Audio Call, Video Call, Close */}
+            <div className="flex items-center gap-1 sm:gap-1.5 shrink-0 ml-2">
+              <Button
+                type="button"
+                onClick={() => startCall(activeContact.id, "AUDIO")}
+                variant="outline"
+                size="sm"
+                className="h-8 px-2.5 rounded-full gap-1 text-xs font-medium border-border text-foreground hover:bg-primary hover:text-primary-foreground hover:border-primary transition-colors shadow-xs"
+                title="Audio Call"
+                aria-label="Audio call"
+              >
+                <PhoneIcon className="h-3.5 w-3.5 text-primary group-hover:text-primary-foreground" />
+                <span className="hidden sm:inline text-[11px]">Call</span>
+              </Button>
 
-                    return (
-                      <div
-                        key={contact.id}
-                        onClick={() => handleSelectContact(contact.id)}
-                        className={[
-                          "relative flex items-center justify-between gap-2.5 w-full rounded-md p-2 text-left transition-colors cursor-pointer group",
-                          isActive ? "bg-accent text-foreground" : "hover:bg-accent/50 text-foreground/80",
-                          isCollapsed ? "xl:justify-center" : "",
-                        ].join(" ")}
-                        title={isCollapsed ? (contact.name || contact.username) : undefined}
-                      >
-                        <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                          <Avatar className={`border border-border shrink-0 ${isCollapsed ? 'xl:h-8 xl:w-8 h-9 w-9' : 'h-9 w-9'}`}>
-                            <AvatarImage src={contact.image || "/avatar.png"} />
-                          </Avatar>
-                          <div className={`min-w-0 flex-1 ${isCollapsed ? 'xl:hidden' : 'block'}`}>
-                            <p className="truncate text-xs font-semibold text-foreground">
-                              {contact.name || contact.username}
-                            </p>
-                            <p className="truncate text-[11px] text-muted-foreground mt-0.5">
-                              {contact.lastMessage || "Tap to start chatting"}
-                            </p>
-                          </div>
-                        </div>
+              <Button
+                type="button"
+                onClick={() => startCall(activeContact.id, "VIDEO")}
+                variant="outline"
+                size="sm"
+                className="h-8 px-2.5 rounded-full gap-1 text-xs font-medium border-border text-foreground hover:bg-primary hover:text-primary-foreground hover:border-primary transition-colors shadow-xs"
+                title="Video Call"
+                aria-label="Video call"
+              >
+                <VideoIcon className="h-3.5 w-3.5 text-primary group-hover:text-primary-foreground" />
+                <span className="hidden sm:inline text-[11px]">Video</span>
+              </Button>
 
-                        <div className={`flex items-center gap-1 shrink-0 ${isCollapsed ? 'xl:hidden' : 'flex'}`}>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              startCall(contact.id, "AUDIO");
-                            }}
-                            className="h-7 w-7 rounded-full text-muted-foreground hover:text-foreground hover:bg-primary/10"
-                            title="Audio Call"
-                            aria-label="Audio call"
-                          >
-                            <PhoneIcon className="h-3.5 w-3.5" />
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              startCall(contact.id, "VIDEO");
-                            }}
-                            className="h-7 w-7 rounded-full text-muted-foreground hover:text-foreground hover:bg-primary/10"
-                            title="Video Call"
-                            aria-label="Video call"
-                          >
-                            <VideoIcon className="h-3.5 w-3.5" />
-                          </Button>
-
-                          {contact.unreadCount > 0 ? (
-                            <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground ml-1">
-                              {contact.unreadCount > 9 ? "9+" : contact.unreadCount}
-                            </span>
-                          ) : null}
-                        </div>
-                      </div>
-                    );
-                  })
-                ) : (
-                  <div className="flex flex-col items-center justify-center py-10 text-muted-foreground">
-                    <UsersIcon className="h-6 w-6 opacity-30 mb-2" />
-                    <p className="text-xs">No contacts found</p>
-                  </div>
-                )}
-              </div>
+              {/* Minimize / Close button */}
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={toggleChat}
+                className="h-8 w-8 rounded-full hover:bg-destructive hover:text-destructive-foreground transition-colors ml-0.5"
+                aria-label="Close chat"
+                title="Close chat"
+              >
+                <XIcon className="h-4 w-4" />
+              </Button>
             </div>
-
-            <div
-              className="hidden xl:block absolute top-0 right-0 w-1.5 h-full cursor-col-resize hover:bg-primary/50 active:bg-primary z-10 transition-colors"
-              onMouseDown={handleMouseDown}
-            />
           </div>
 
-          {/* Conversation Detail Column */}
-          <div className={`flex-1 min-w-0 flex-col ${activeContact ? "flex" : "hidden xl:flex"}`}>
-            {activeContact ? (
-              <>
-                <div className="flex items-center justify-between border-b border-border px-3 sm:px-4 py-2.5 sm:py-3 bg-card/60 backdrop-blur-xs">
-                  <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-                    {/* Mobile Back Button to Contacts List */}
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setActiveContactId(null)}
-                      className="h-8 w-8 rounded-md xl:hidden shrink-0 text-muted-foreground hover:text-foreground hover:bg-accent"
-                      aria-label="Back to contacts"
-                      title="Back to contacts"
-                    >
-                      <ArrowLeftIcon className="h-4 w-4" />
-                    </Button>
+          {/* Messages Scroll Area */}
+          <div ref={messagesContainerRef} className="flex-1 overflow-y-auto px-4 py-3 min-h-0 space-y-2.5">
+            {activeMessages.length > 0 ? (
+              activeMessages.map((message) => {
+                const isMine = message.senderId === viewerUserId;
 
-                    <Avatar className="h-8 w-8 sm:h-9 sm:w-9 border border-border shrink-0">
-                      <AvatarImage src={activeContact.image || "/avatar.png"} />
-                    </Avatar>
-                    <div className="min-w-0">
-                      <p className="truncate text-xs sm:text-sm font-semibold">
-                        {activeContact.name || activeContact.username}
-                      </p>
-                      <p className="truncate text-[11px] text-muted-foreground">@{activeContact.username}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
-                    <Button 
-                      onClick={() => startCall(activeContact.id, "AUDIO")}
-                      variant="outline" 
-                      size="sm" 
-                      className="h-8 px-2.5 rounded-md gap-1.5 text-xs font-medium text-foreground hover:bg-primary hover:text-primary-foreground hover:border-primary transition-colors"
-                      title="Start Audio Call"
-                      aria-label="Audio call"
+                return (
+                  <div
+                    key={message.id}
+                    className={isMine ? "flex justify-end" : "flex justify-start"}
+                  >
+                    <div
+                      className={[
+                        "max-w-[82%] rounded-2xl px-3.5 py-2 text-xs sm:text-sm leading-relaxed shadow-xs",
+                        isMine
+                          ? "bg-primary text-primary-foreground rounded-br-xs"
+                          : "bg-muted text-foreground border border-border/50 rounded-bl-xs",
+                      ].join(" ")}
                     >
-                      <PhoneIcon className="h-3.5 w-3.5" />
-                      <span className="hidden sm:inline">Call</span>
-                    </Button>
-                    <Button 
-                      onClick={() => startCall(activeContact.id, "VIDEO")}
-                      variant="outline" 
-                      size="sm" 
-                      className="h-8 px-2.5 rounded-md gap-1.5 text-xs font-medium text-foreground hover:bg-primary hover:text-primary-foreground hover:border-primary transition-colors"
-                      title="Start Video Call"
-                      aria-label="Video call"
-                    >
-                      <VideoIcon className="h-3.5 w-3.5" />
-                      <span className="hidden sm:inline">Video</span>
-                    </Button>
-                    {/* Mobile Close Button */}
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={toggleChat}
-                      className="h-8 w-8 rounded-md xl:hidden hover:bg-destructive hover:text-destructive-foreground transition-colors ml-1"
-                      aria-label="Close chat"
-                      title="Close chat"
-                    >
-                      <XIcon className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-
-                <div ref={messagesContainerRef} className="flex-1 overflow-y-auto px-4 py-3">
-                  {activeMessages.length > 0 ? (
-                    <div className="space-y-2.5">
-                      {activeMessages.map((message) => {
-                        const isMine = message.senderId === viewerUserId;
-
-                        return (
-                          <div
-                            key={message.id}
-                            className={isMine ? "flex justify-end" : "flex justify-start"}
-                          >
-                            <div
-                              className={[
-                                "max-w-[85%] rounded-md px-3.5 py-2 text-sm leading-relaxed",
-                                isMine
-                                  ? "bg-primary text-primary-foreground"
-                                  : "bg-muted text-foreground border border-border/50",
-                              ].join(" ")}
-                            >
-                              <p className="whitespace-pre-wrap">{message.content}</p>
-                              <p
-                                className={[
-                                  "mt-1 text-[10px]",
-                                  isMine ? "text-primary-foreground/75" : "text-muted-foreground",
-                                ].join(" ")}
-                              >
-                                {formatMessageTime(message.createdAt)}
-                              </p>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <div className="flex h-full flex-col items-center justify-center rounded-md border border-dashed border-border/70 bg-muted/10 px-6 py-8 text-center">
-                      <MessageCircleMoreIcon className="h-6 w-6 text-muted-foreground mb-2" />
-                      <p className="text-sm font-medium">No messages yet</p>
-                      <p className="mt-0.5 text-xs text-muted-foreground">
-                        Start the conversation with {activeContact.name || activeContact.username}.
-                      </p>
-                    </div>
-                  )}
-                </div>
-
-                <div className="border-t border-border px-3 sm:px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))]">
-                  <div className="rounded-md border border-border bg-card p-2.5">
-                    <div className="flex items-end gap-2">
-                      <Textarea
-                        value={draft}
-                        onChange={(event) => setDraft(event.target.value)}
-                        placeholder={`Message ${activeContact.name || activeContact.username}...`}
-                        className="min-h-[50px] sm:min-h-[64px] text-xs sm:text-sm border-none bg-transparent px-1 py-1 shadow-none focus-visible:ring-0 resize-none leading-relaxed"
-                        disabled={isSendPending}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" && !e.shiftKey) {
-                            e.preventDefault();
-                            handleSend();
-                          }
-                        }}
-                      />
-                      <Button
-                        type="button"
-                        onClick={handleSend}
-                        disabled={!draft.trim() || isSendPending}
-                        size="sm"
-                        className="h-8 px-3 rounded-md shrink-0 font-medium shadow-none"
-                        aria-label="Send message"
+                      <p className="whitespace-pre-wrap">{message.content}</p>
+                      <p
+                        className={[
+                          "mt-1 text-[9px] sm:text-[10px]",
+                          isMine ? "text-primary-foreground/75" : "text-muted-foreground",
+                        ].join(" ")}
                       >
-                        <SendHorizonalIcon className="h-4 w-4" />
-                      </Button>
+                        {formatMessageTime(message.createdAt)}
+                      </p>
                     </div>
                   </div>
-                </div>
-              </>
+                );
+              })
             ) : (
-              <div className="flex h-full items-center justify-center px-6 text-center text-xs text-muted-foreground">
-                Select a contact to start chatting.
+              <div className="flex h-full flex-col items-center justify-center rounded-xl border border-dashed border-border/70 bg-muted/10 px-6 py-8 text-center my-auto">
+                <MessageCircleMoreIcon className="h-8 w-8 text-muted-foreground mb-2 opacity-50" />
+                <p className="text-sm font-medium text-foreground">No messages yet</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  Send a message to start chatting with {activeContact.name || activeContact.username}.
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Input & Send Area */}
+          <div className="border-t border-border p-2.5 sm:p-3 bg-card/60 backdrop-blur-xs shrink-0 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))]">
+            <div className="flex items-end gap-2 rounded-xl border border-border bg-background/80 p-1.5 focus-within:ring-1 focus-within:ring-primary/40 transition-all">
+              <Textarea
+                value={draft}
+                onChange={(event) => setDraft(event.target.value)}
+                placeholder={`Message ${activeContact.name || activeContact.username}...`}
+                className="min-h-[44px] max-h-[120px] text-xs sm:text-sm border-none bg-transparent px-2 py-1.5 shadow-none focus-visible:ring-0 resize-none leading-relaxed"
+                disabled={isSendPending}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSend();
+                  }
+                }}
+              />
+              <Button
+                type="button"
+                onClick={handleSend}
+                disabled={!draft.trim() || isSendPending}
+                size="icon"
+                className="h-8 w-8 rounded-lg shrink-0 shadow-none"
+                aria-label="Send message"
+              >
+                <SendHorizonalIcon className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : (
+        /* Contacts List View */
+        <div className="h-full w-full flex flex-col min-h-0">
+          {/* Header */}
+          <div className="border-b border-border p-3.5 sm:p-4 bg-card/60 shrink-0">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-semibold text-foreground">Messages</p>
+                <div className="rounded-full bg-primary/15 px-2 py-0.5 text-[11px] font-semibold text-primary">
+                  {contacts.length}
+                </div>
+              </div>
+
+              {/* Close Button */}
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={toggleChat}
+                className="h-8 w-8 rounded-full hover:bg-destructive hover:text-destructive-foreground transition-colors"
+                aria-label="Close chat"
+                title="Close chat"
+              >
+                <XIcon className="h-4 w-4" />
+              </Button>
+            </div>
+
+            {/* Search Box */}
+            <div className="mt-3 flex h-9 items-center rounded-lg border border-border bg-background px-3 focus-within:ring-1 focus-within:ring-primary/40">
+              <SearchIcon className="h-4 w-4 text-muted-foreground shrink-0" />
+              <input
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search contacts..."
+                className="w-full bg-transparent px-2 text-xs outline-none placeholder:text-muted-foreground/60"
+              />
+            </div>
+          </div>
+
+          {/* Contact Items List (Clean: NO outside call buttons) */}
+          <div className="flex-1 overflow-y-auto p-2 min-h-0 space-y-1">
+            {filteredContacts.length > 0 ? (
+              filteredContacts.map((contact) => (
+                <button
+                  key={contact.id}
+                  type="button"
+                  onClick={() => handleSelectContact(contact.id)}
+                  className="relative flex items-center justify-between gap-3 w-full rounded-xl p-2.5 text-left transition-colors cursor-pointer hover:bg-accent/70 group"
+                >
+                  <Avatar className="h-10 w-10 border border-border shrink-0">
+                    <AvatarImage src={contact.image || "/avatar.png"} />
+                  </Avatar>
+
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-xs sm:text-sm font-semibold text-foreground group-hover:text-primary transition-colors">
+                      {contact.name || contact.username}
+                    </p>
+                    <p className="truncate text-[11px] text-muted-foreground mt-0.5">
+                      {contact.lastMessage || "Tap to start chatting"}
+                    </p>
+                  </div>
+
+                  {contact.unreadCount > 0 ? (
+                    <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-bold text-primary-foreground shrink-0 shadow-xs">
+                      {contact.unreadCount > 9 ? "9+" : contact.unreadCount}
+                    </span>
+                  ) : null}
+                </button>
+              ))
+            ) : (
+              <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+                <UsersIcon className="h-7 w-7 opacity-30 mb-2" />
+                <p className="text-xs">No contacts found</p>
               </div>
             )}
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

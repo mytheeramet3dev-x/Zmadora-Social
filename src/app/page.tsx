@@ -1,31 +1,17 @@
 import { getPostsPage } from "@/actions/post.action";
-import { getDbUserId, getCurrentUserContext } from "@/actions/user.action";
+import { getCurrentUserContext } from "@/actions/user.action";
 import CreatePost from "@/components/feed/CreatePost";
-import FeedList from "@/components/feed/FeedList";
+import HomeFeedClient from "@/components/feed/HomeFeedClient";
 import GuestFeedCTA from "@/components/feed/GuestFeedCTA";
-import FeedSkeleton from "@/components/feed/FeedSkeleton";
 import { SignedIn, SignedOut } from "@clerk/nextjs";
-import { Suspense } from "react";
 
 export const dynamic = "force-dynamic";
 
-async function HomeFeed() {
-  const [{ posts, nextCursor }, viewerUserId] = await Promise.all([
-    getPostsPage(),
-    getDbUserId(),
-  ]);
-
-  return (
-    <FeedList
-      initialPosts={posts}
-      initialCursor={nextCursor}
-      viewerUserId={viewerUserId}
-    />
-  );
-}
-
 export default async function Home() {
-  const context = await getCurrentUserContext();
+  const [context, { posts, nextCursor }] = await Promise.all([
+    getCurrentUserContext(),
+    getPostsPage(),
+  ]);
 
   return (
     <div className="w-full min-h-screen border-x border-border divide-y divide-border">
@@ -33,9 +19,11 @@ export default async function Home() {
         <CreatePost userImage={context?.dbUser.image} />
       </SignedIn>
 
-      <Suspense fallback={<FeedSkeleton />}>
-        <HomeFeed />
-      </Suspense>
+      <HomeFeedClient
+        initialPosts={posts}
+        initialCursor={nextCursor}
+        viewerUserId={context?.dbUser?.id}
+      />
 
       <SignedOut>
         <GuestFeedCTA />
