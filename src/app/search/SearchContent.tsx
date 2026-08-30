@@ -115,16 +115,16 @@ export default function SearchContent() {
               {results.map((user) => (
                 <div
                   key={user.id}
-                  className="flex items-center justify-between p-3.5 sm:p-4 hover:bg-accent/40 transition-colors"
+                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 sm:p-4 hover:bg-accent/40 transition-colors"
                 >
                   <Link
                     href={`/profile/${user.username}`}
-                    className="flex min-w-0 items-center gap-3"
+                    className="flex min-w-0 items-center gap-3 flex-1"
                   >
                     <Avatar className="h-10 w-10 border border-border shrink-0">
                       <AvatarImage src={user.image || "/avatar.png"} />
                     </Avatar>
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-semibold text-foreground hover:underline">
                         {user.name || user.username}
                       </p>
@@ -134,7 +134,7 @@ export default function SearchContent() {
                     </div>
                   </Link>
 
-                  <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex items-center gap-2 self-end sm:self-auto shrink-0 pl-13 sm:pl-0">
                     <StartChatButton
                       contact={{
                         id: user.id,
@@ -142,6 +142,7 @@ export default function SearchContent() {
                         username: user.username,
                         image: user.image,
                       }}
+                      size="sm"
                     />
                     <FollowButton targetUserId={user.id} initialIsFollowing={false} size="sm" />
                   </div>
@@ -173,16 +174,16 @@ export default function SearchContent() {
               {recommendations.map((user) => (
                 <div
                   key={user.id}
-                  className="flex items-center justify-between p-3.5 sm:p-4 hover:bg-accent/40 transition-colors"
+                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 sm:p-4 hover:bg-accent/40 transition-colors"
                 >
                   <Link
                     href={`/profile/${user.username}`}
-                    className="flex min-w-0 items-center gap-3"
+                    className="flex min-w-0 items-center gap-3 flex-1"
                   >
                     <Avatar className="h-10 w-10 border border-border shrink-0">
                       <AvatarImage src={user.image || "/avatar.png"} />
                     </Avatar>
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-semibold text-foreground hover:underline">
                         {user.name || user.username}
                       </p>
@@ -192,7 +193,7 @@ export default function SearchContent() {
                     </div>
                   </Link>
 
-                  <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex items-center gap-2 self-end sm:self-auto shrink-0 pl-13 sm:pl-0">
                     <StartChatButton
                       contact={{
                         id: user.id,
@@ -200,6 +201,7 @@ export default function SearchContent() {
                         username: user.username,
                         image: user.image,
                       }}
+                      size="sm"
                     />
                     <FollowButton
                       targetUserId={user.id}
