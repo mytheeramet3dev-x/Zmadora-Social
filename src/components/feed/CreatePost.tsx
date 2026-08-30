@@ -25,6 +25,15 @@ function CreatePost({
   const [isPosting, setIsPosting] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+
+  const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setContent(e.target.value);
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto";
+      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 360)}px`;
+    }
+  };
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -97,6 +106,7 @@ function CreatePost({
         setImageUrl("");
         setPreviewUrl("");
         if (fileInputRef.current) fileInputRef.current.value = "";
+        if (textareaRef.current) textareaRef.current.style.height = "auto";
         toast.success("Post published!");
         onPostCreated?.();
       } else {
@@ -128,13 +138,15 @@ function CreatePost({
           <AvatarImage src={userImage || "/avatar.png"} />
         </Avatar>
 
-        <div className="min-w-0 flex-1 space-y-3">
+        <div className="min-w-0 flex-1 space-y-2.5">
           <Textarea
+            ref={textareaRef}
             placeholder="What's happening?"
-            className="min-h-[72px] w-full resize-none border-none bg-transparent p-0 text-base placeholder:text-muted-foreground/60 focus-visible:ring-0 shadow-none leading-relaxed"
+            className="min-h-[36px] sm:min-h-[40px] w-full resize-none border-none bg-transparent px-1.5 py-1 text-base sm:text-lg placeholder:text-muted-foreground/60 focus-visible:ring-0 shadow-none leading-relaxed overflow-hidden"
             value={content}
-            onChange={(e) => setContent(e.target.value)}
+            onChange={handleContentChange}
             disabled={isPosting}
+            rows={1}
           />
 
           {displayImage && (
