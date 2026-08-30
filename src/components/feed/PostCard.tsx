@@ -28,6 +28,7 @@ import {
   SendIcon,
   Trash2Icon,
 } from "lucide-react";
+import PostContentRenderer from "@/components/posts/renderer/PostContentRenderer";
 
 type CommentAuthor = {
   id: string;
@@ -62,6 +63,7 @@ type PostCardProps = {
   post: {
     id: string;
     content: string | null;
+    contentType?: "TEXT" | "MARKDOWN" | string;
     image: string | null;
     createdAt: Date;
     authorId: string;
@@ -558,9 +560,10 @@ function PostCard({ post, viewerUserId }: PostCardProps) {
       </div>
 
       {post.content ? (
-        <p className="mt-3 whitespace-pre-wrap text-[15px] leading-relaxed text-foreground">
-          {post.content}
-        </p>
+        <PostContentRenderer
+          source={post.content}
+          contentType={post.contentType}
+        />
       ) : null}
 
       {post.image ? (

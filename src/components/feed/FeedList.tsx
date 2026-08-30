@@ -19,6 +19,7 @@ type FeedListProps = {
   initialPosts: {
     id: string;
     content: string | null;
+    contentType?: "TEXT" | "MARKDOWN" | string;
     image: string | null;
     createdAt: string | Date;
     authorId: string;

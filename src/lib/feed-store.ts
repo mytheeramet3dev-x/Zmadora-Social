@@ -1,6 +1,7 @@
 export type FeedPost = {
   id: string;
   content: string | null;
+  contentType?: "TEXT" | "MARKDOWN" | string;
   image: string | null;
   createdAt: Date;
   authorId: string;

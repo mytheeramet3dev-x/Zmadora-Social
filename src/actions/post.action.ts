@@ -363,7 +363,11 @@ async function getFeedPage({
   };
 }
 
-export async function createPost(content: string, image: string) {
+export async function createPost(
+  content: string,
+  image: string,
+  contentType: "TEXT" | "MARKDOWN" = "TEXT"
+) {
   try {
     const userId = await getDbUserId();
 
@@ -376,14 +380,20 @@ export async function createPost(content: string, image: string) {
 
     const trimmedContent = content?.trim() || null;
     const trimmedImage = image?.trim() || null;
+    const validContentType = contentType === "MARKDOWN" ? "MARKDOWN" : "TEXT";
 
     if (!trimmedContent && !trimmedImage) {
       return { success: false, error: "Post must contain text or an image" };
     }
 
+    if (trimmedContent && trimmedContent.length > 30000) {
+      return { success: false, error: "Post content exceeds maximum allowed length (30,000 characters)" };
+    }
+
     const post = await prisma.post.create({
       data: {
         content: trimmedContent,
+        contentType: validContentType,
         image: trimmedImage,
         authorId: userId,
       },

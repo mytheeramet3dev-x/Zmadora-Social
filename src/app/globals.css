@@ -1,3 +1,5 @@
+@import "katex/dist/katex.min.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -13,6 +15,123 @@
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
+}
+
+/* Prism Syntax Highlighting Themes: Light vs Dark */
+:root {
+  --code-bg: #f6f8fa;
+  --code-border: #d0d7de;
+  --code-header-bg: #eaeef2;
+  --code-header-text: #57606a;
+  --code-text: #24292f;
+  --code-line-num: #8c959f;
+  --token-comment: #6e7781;
+  --token-punctuation: #24292f;
+  --token-keyword: #cf222e;
+  --token-string: #0a3069;
+  --token-function: #8250df;
+  --token-number: #0550ae;
+  --token-class: #953800;
+  --token-operator: #cf222e;
+  --math-bg: #f8fafc;
+  --math-border: #e2e8f0;
+  --math-text: #0f172a;
+}
+
+.dark {
+  --code-bg: #0d1117;
+  --code-border: #30363d;
+  --code-header-bg: #161b22;
+  --code-header-text: #8b949e;
+  --code-text: #e6edf3;
+  --code-line-num: #484f58;
+  --token-comment: #8b949e;
+  --token-punctuation: #e6edf3;
+  --token-keyword: #ff7b72;
+  --token-string: #a5d6ff;
+  --token-function: #d2a8ff;
+  --token-number: #79c0ff;
+  --token-class: #ffa657;
+  --token-operator: #ff7b72;
+  --math-bg: rgba(30, 41, 59, 0.45);
+  --math-border: rgba(51, 65, 85, 0.7);
+  --math-text: #f8fafc;
+}
+
+.token.comment,
+.token.prolog,
+.token.doctype,
+.token.cdata {
+  color: var(--token-comment);
+  font-style: italic;
+}
+
+.token.punctuation {
+  color: var(--token-punctuation);
+}
+
+.token.property,
+.token.tag,
+.token.boolean,
+.token.number,
+.token.constant,
+.token.symbol,
+.token.deleted {
+  color: var(--token-number);
+}
+
+.token.selector,
+.token.attr-name,
+.token.string,
+.token.char,
+.token.builtin,
+.token.inserted {
+  color: var(--token-string);
+}
+
+.token.operator,
+.token.entity,
+.token.url,
+.token.variable {
+  color: var(--token-operator);
+}
+
+.token.atrule,
+.token.attr-value,
+.token.keyword {
+  color: var(--token-keyword);
+  font-weight: 600;
+}
+
+.token.function,
+.token.class-name {
+  color: var(--token-function);
+  font-weight: 500;
+}
+
+.token.regex,
+.token.important {
+  color: var(--token-class);
+}
+
+.token.important,
+.token.bold {
+  font-weight: bold;
+}
+.token.italic {
+  font-style: italic;
+}
+
+/* KaTeX container styling */
+.katex-display {
+  margin: 0 !important;
+  padding: 0.5rem 0 !important;
+  color: var(--math-text) !important;
+}
+
+.katex {
+  font-size: 1.05em !important;
+  color: inherit !important;
 }
 
 
