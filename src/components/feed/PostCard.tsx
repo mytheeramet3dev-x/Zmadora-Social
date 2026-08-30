@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import toast from "react-hot-toast";
 import {
@@ -261,6 +262,7 @@ function CommentItem({
 }
 
 function PostCard({ post, viewerUserId }: PostCardProps) {
+  const router = useRouter();
   const [isLiked, setIsLiked] = useState(
     viewerUserId ? post.likes.some((like) => like.userId === viewerUserId) : false
   );
@@ -505,6 +507,16 @@ function PostCard({ post, viewerUserId }: PostCardProps) {
         <Link
           href={`/profile/${post.author.username}`}
           prefetch={true}
+          onMouseEnter={() => {
+            try {
+              router.prefetch(`/profile/${post.author.username}`);
+            } catch {}
+          }}
+          onTouchStart={() => {
+            try {
+              router.prefetch(`/profile/${post.author.username}`);
+            } catch {}
+          }}
           className="flex min-w-0 flex-1 items-center gap-3 text-left group"
         >
           <Avatar className="h-10 w-10 border border-border shrink-0">

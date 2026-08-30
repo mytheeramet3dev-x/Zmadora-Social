@@ -1,9 +1,19 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import PostCard from "@/components/feed/PostCard";
 import { Loader2Icon } from "lucide-react";
 import { pusherClient } from "@/lib/pusher-client";
+import {
+  getClientFeedStore,
+  saveClientFeedStore,
+  updateClientFeedScroll,
+  updateClientFeedPost,
+  prependClientFeedPost,
+  removeClientFeedPost,
+  clearClientFeedStore,
+  type FeedPost,
+} from "@/lib/feed-store";
 
 type FeedListProps = {
   initialPosts: {
@@ -60,6 +70,8 @@ type FeedListProps = {
     _count: {
       likes: number;
       comments: number;
+      bookmarks?: number;
+      reposts?: number;
     };
   }[];
   initialCursor?: string | null;
@@ -68,18 +80,26 @@ type FeedListProps = {
 
 type NormalizedPost = ReturnType<typeof normalizeFeedPost>;
 
-function normalizeFeedPost(post: FeedListProps["initialPosts"][number]) {
+function normalizeFeedPost(post: any): FeedPost {
   return {
     ...post,
     createdAt: new Date(post.createdAt),
-    comments: post.comments.map((comment) => ({
+    bookmarks: post.bookmarks || [],
+    reposts: post.reposts || [],
+    comments: (post.comments || []).map((comment: any) => ({
       ...comment,
       createdAt: new Date(comment.createdAt),
-      replies: comment.replies?.map((reply) => ({
+      replies: comment.replies?.map((reply: any) => ({
         ...reply,
         createdAt: new Date(reply.createdAt),
       })),
     })),
+    _count: {
+      likes: post._count?.likes ?? (post.likes || []).length,
+      comments: post._count?.comments ?? (post.comments || []).length,
+      bookmarks: post._count?.bookmarks ?? (post.bookmarks || []).length,
+      reposts: post._count?.reposts ?? (post.reposts || []).length,
+    },
   };
 }
 
@@ -89,19 +109,92 @@ function FeedList({
   viewerUserId,
 }: FeedListProps) {
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
-  const [posts, setPosts] = useState<NormalizedPost[]>(() =>
-    initialPosts.map((post) => normalizeFeedPost(post))
-  );
-  const [nextCursor, setNextCursor] = useState<string | null>(initialCursor);
-  const [hasMore, setHasMore] = useState(Boolean(initialCursor));
+  
+  // Hydrate from in-memory Client Feed Store if available, else use initial server posts
+  const [posts, setPosts] = useState<NormalizedPost[]>(() => {
+    const cached = getClientFeedStore();
+    if (cached && cached.posts.length > 0) {
+      return cached.posts;
+    }
+    const normalized = initialPosts.map((post) => normalizeFeedPost(post));
+    saveClientFeedStore(normalized, initialCursor, Boolean(initialCursor), 0);
+    return normalized;
+  });
+
+  const [nextCursor, setNextCursor] = useState<string | null>(() => {
+    const cached = getClientFeedStore();
+    return cached ? cached.nextCursor : initialCursor;
+  });
+
+  const [hasMore, setHasMore] = useState<boolean>(() => {
+    const cached = getClientFeedStore();
+    return cached ? cached.hasMore : Boolean(initialCursor);
+  });
+
   const [isLoadingMore, setIsLoadingMore] = useState(false);
 
+  // Restore scroll position seamlessly on mount
+  useLayoutEffect(() => {
+    const cached = getClientFeedStore();
+    if (cached && cached.scrollPosition > 0) {
+      // Delay by 1 frame to ensure DOM layout has completed
+      requestAnimationFrame(() => {
+        window.scrollTo({
+          top: cached.scrollPosition,
+          behavior: "instant",
+        });
+      });
+    }
+  }, []);
+
+  // Track and save scroll position continuously & on unmount
+  useEffect(() => {
+    let ticking = false;
+
+    const handleScroll = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          updateClientFeedScroll(window.scrollY);
+          ticking = false;
+        });
+        ticking = true;
+      }
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+
+    return () => {
+      updateClientFeedScroll(window.scrollY);
+      window.removeEventListener("scroll", handleScroll);
+    };
+  }, []);
+
+  // Listen for explicit feed refresh events (e.g. clicking Home while at top)
+  useEffect(() => {
+    const handleRefresh = () => {
+      clearClientFeedStore();
+      const normalized = initialPosts.map((post) => normalizeFeedPost(post));
+      setPosts(normalized);
+      setNextCursor(initialCursor);
+      setHasMore(Boolean(initialCursor));
+      saveClientFeedStore(normalized, initialCursor, Boolean(initialCursor), 0);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    };
+
+    window.addEventListener("social:refresh-feed", handleRefresh);
+    return () => {
+      window.removeEventListener("social:refresh-feed", handleRefresh);
+    };
+  }, [initialCursor, initialPosts]);
+
+  // Realtime subscription synced with both React State and in-memory FeedStore
   useEffect(() => {
     const channel = pusherClient.subscribe("feed-channel");
 
     const handleFeedEvent = (payload: any) => {
       if (payload.type === "post_deleted") {
         setPosts((current) => current.filter((post) => post.id !== payload.postId));
+        removeClientFeedPost(payload.postId);
         return;
       }
 
@@ -119,10 +212,14 @@ function FeedList({
             }
           : normalizedPost;
 
-        const nextPosts =
-          payload.type === "post_created"
-            ? [mergedPost, ...current.filter((post) => post.id !== payload.post.id)]
-            : current.map((post) => (post.id === payload.post.id ? mergedPost : post));
+        let nextPosts: NormalizedPost[];
+        if (payload.type === "post_created") {
+          nextPosts = [mergedPost, ...current.filter((post) => post.id !== payload.post.id)];
+          prependClientFeedPost(mergedPost);
+        } else {
+          nextPosts = current.map((post) => (post.id === payload.post.id ? mergedPost : post));
+          updateClientFeedPost(mergedPost);
+        }
 
         return nextPosts.sort(
           (left, right) =>
@@ -178,7 +275,14 @@ function FeedList({
                 .map((post) => normalizeFeedPost(post))
                 .filter((post) => !existingIds.has(post.id));
 
-              return [...current, ...appendedPosts];
+              const nextAllPosts = [...current, ...appendedPosts];
+              saveClientFeedStore(
+                nextAllPosts,
+                payload.nextCursor,
+                Boolean(payload.nextCursor),
+                window.scrollY
+              );
+              return nextAllPosts;
             });
             setNextCursor(payload.nextCursor);
             setHasMore(Boolean(payload.nextCursor));

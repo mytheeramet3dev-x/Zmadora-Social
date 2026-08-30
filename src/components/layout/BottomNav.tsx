@@ -20,8 +20,19 @@ export default function BottomNav({
 }: BottomNavProps) {
   const pathname = usePathname();
 
+  const handleHomeClick = (e: React.MouseEvent) => {
+    if (pathname === "/") {
+      e.preventDefault();
+      if (window.scrollY > 150) {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      } else {
+        window.dispatchEvent(new CustomEvent("social:refresh-feed"));
+      }
+    }
+  };
+
   const navItems = [
-    { href: "/", icon: HomeIcon, label: "Home" },
+    { href: "/", icon: HomeIcon, label: "Home", onClick: handleHomeClick },
     { href: "/search", icon: SearchIcon, label: "Search" },
   ];
 
@@ -34,6 +45,7 @@ export default function BottomNav({
             key={item.href}
             href={item.href}
             prefetch={true}
+            onClick={item.onClick}
             aria-label={item.label}
             className={`flex flex-col items-center justify-center w-full h-full min-h-[44px] transition-colors ${
               isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"
