@@ -37,7 +37,7 @@ async function Sidebar() {
         </Link>
         
         <div className="mt-4 space-y-1 flex flex-col items-center xl:items-start w-full">
-          <Link href="/" className={linkClass}>
+          <Link href="/" prefetch={true} className={linkClass}>
             <HomeIcon className="w-5 h-5" strokeWidth={2} />
             <span className="hidden xl:inline">Home</span>
           </Link>
@@ -54,12 +54,12 @@ async function Sidebar() {
                 labelClassName="text-base font-medium hidden xl:inline"
               />
 
-              <Link href={profileHref} className={linkClass}>
+              <Link href={profileHref} prefetch={true} className={linkClass}>
                 <UserIcon className="w-5 h-5" strokeWidth={2} />
                 <span className="hidden xl:inline">Profile</span>
               </Link>
 
-              <Link href="/settings" className={linkClass}>
+              <Link href="/settings" prefetch={true} className={linkClass}>
                 <SettingsIcon className="w-5 h-5" strokeWidth={2} />
                 <span className="hidden xl:inline">Settings</span>
               </Link>

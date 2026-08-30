@@ -37,6 +37,7 @@ export default function BottomNav({
           <Link
             key={item.href}
             href={item.href}
+            prefetch={true}
             aria-label={item.label}
             className={`flex flex-col items-center justify-center w-full h-full min-h-[44px] transition-colors ${
               isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"
@@ -84,6 +85,7 @@ export default function BottomNav({
         return (
           <Link
             href={profileHref}
+            prefetch={true}
             aria-label="Profile"
             className={`flex flex-col items-center justify-center w-full h-full min-h-[44px] transition-colors ${
               isProfileActive ? "text-primary" : "text-muted-foreground hover:text-foreground"

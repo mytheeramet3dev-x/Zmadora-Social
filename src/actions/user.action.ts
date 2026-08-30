@@ -61,17 +61,15 @@ function isTrustedProfileImageUrl(rawUrl: string) {
 }
 
 export const getCurrentUserContext = cache(async () => {
-  const clerkUser = await currentUser();
+  const { userId: clerkId } = await auth();
 
-  if (!clerkUser) {
+  if (!clerkId) {
     return null;
   }
 
-  const username =
-    clerkUser.username ?? clerkUser.emailAddresses[0].emailAddress.split("@")[0];
-
+  // 1. Fast lookup from database by clerkId
   let dbUser = await prisma.user.findUnique({
-    where: { clerkId: clerkUser.id },
+    where: { clerkId },
     include: {
       _count: {
         select: { followers: true, following: true, posts: true },
@@ -79,56 +77,57 @@ export const getCurrentUserContext = cache(async () => {
     },
   });
 
+  if (dbUser) {
+    return {
+      clerkUser: null,
+      dbUser,
+      profileHref: `/profile/${dbUser.username}`,
+    };
+  }
+
+  // 2. If user not yet in DB, fetch from Clerk once to register
+  const clerkUser = await currentUser();
+  if (!clerkUser) {
+    return null;
+  }
+
+  const username =
+    clerkUser.username ?? clerkUser.emailAddresses[0].emailAddress.split("@")[0];
   const email = clerkUser.emailAddresses[0].emailAddress;
   const name = `${clerkUser.firstName || ""} ${clerkUser.lastName || ""}`.trim() || null;
 
-  if (!dbUser) {
-    // If not found by clerkId, try to find by email to link accounts
-    // This happens if user switches from Prod to Dev Clerk keys
-    const existingByEmail = await prisma.user.findUnique({
-      where: { email },
-    });
+  const existingByEmail = await prisma.user.findUnique({
+    where: { email },
+  });
 
-    if (existingByEmail) {
-      dbUser = await prisma.user.update({
-        where: { email },
-        data: { clerkId: clerkUser.id, name, image: clerkUser.imageUrl },
-        include: {
-          _count: {
-            select: { followers: true, following: true, posts: true },
-          },
-        },
-      });
-    } else {
-      // Need to handle potential username collisions
-      let finalUsername = username;
-      const existingByUsername = await prisma.user.findUnique({
-        where: { username },
-      });
-      if (existingByUsername) {
-        finalUsername = `${username}_${Math.random().toString(36).slice(2, 6)}`;
-      }
-
-      dbUser = await prisma.user.create({
-        data: {
-          clerkId: clerkUser.id,
-          name,
-          username: finalUsername,
-          email,
-          image: clerkUser.imageUrl,
-        },
-        include: {
-          _count: {
-            select: { followers: true, following: true, posts: true },
-          },
-        },
-      });
-    }
-  } else {
-    // Update existing user with latest clerk info
+  if (existingByEmail) {
     dbUser = await prisma.user.update({
-      where: { clerkId: clerkUser.id },
-      data: { name, image: clerkUser.imageUrl },
+      where: { email },
+      data: { clerkId: clerkUser.id, name, image: clerkUser.imageUrl },
+      include: {
+        _count: {
+          select: { followers: true, following: true, posts: true },
+        },
+      },
+    });
+  } else {
+    // Need to handle potential username collisions
+    let finalUsername = username;
+    const existingByUsername = await prisma.user.findUnique({
+      where: { username },
+    });
+    if (existingByUsername) {
+      finalUsername = `${username}_${Math.random().toString(36).slice(2, 6)}`;
+    }
+
+    dbUser = await prisma.user.create({
+      data: {
+        clerkId: clerkUser.id,
+        name,
+        username: finalUsername,
+        email,
+        image: clerkUser.imageUrl,
+      },
       include: {
         _count: {
           select: { followers: true, following: true, posts: true },

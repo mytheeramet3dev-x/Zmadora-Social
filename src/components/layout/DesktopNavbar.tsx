@@ -50,7 +50,7 @@ function DesktopNavbar({
       <ModeToggle />
 
       <Button variant="ghost" className="flex items-center gap-2" asChild>
-        <Link href="/">
+        <Link href="/" prefetch={true}>
           <HomeIcon className="w-4 h-4" />
           <span className="hidden lg:inline">Home</span>
         </Link>
@@ -64,13 +64,13 @@ function DesktopNavbar({
             initialUnreadCount={unreadCount}
           />
           <Button variant="ghost" className="flex items-center gap-2" asChild>
-            <Link href={profileHref}>
+            <Link href={profileHref} prefetch={true}>
               <UserIcon className="w-4 h-4" />
               <span className="hidden lg:inline">Profile</span>
             </Link>
           </Button>
           <Button variant="ghost" className="flex items-center gap-2" asChild>
-            <Link href="/settings">
+            <Link href="/settings" prefetch={true}>
               <SettingsIcon className="w-4 h-4" />
               <span className="hidden lg:inline">Settings</span>
             </Link>
@@ -79,7 +79,7 @@ function DesktopNavbar({
         </>
       ) : (
         <Button variant="default" asChild>
-          <Link href="/sign-in">Sign-In</Link>
+          <Link href="/sign-in" prefetch={true}>Sign-In</Link>
         </Button>
       )}
     </div>
