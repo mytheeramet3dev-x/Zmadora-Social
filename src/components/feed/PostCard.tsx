@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useMemo, useState, useTransition } from "react";
 import toast from "react-hot-toast";
 import {
@@ -501,31 +502,30 @@ function PostCard({ post, viewerUserId }: PostCardProps) {
       ) : null}
 
       <div className="flex items-start justify-between gap-3">
-        <UserQuickActions user={post.author} viewerUserId={viewerUserId}>
-          <button
-            type="button"
-            className="flex min-w-0 flex-1 items-center gap-3 text-left group"
-          >
-            <Avatar className="h-10 w-10 border border-border shrink-0">
-              <AvatarImage src={post.author.image || "/avatar.png"} />
-            </Avatar>
+        <Link
+          href={`/profile/${post.author.username}`}
+          prefetch={true}
+          className="flex min-w-0 flex-1 items-center gap-3 text-left group"
+        >
+          <Avatar className="h-10 w-10 border border-border shrink-0">
+            <AvatarImage src={post.author.image || "/avatar.png"} />
+          </Avatar>
 
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <span className="text-[15px] font-semibold text-foreground group-hover:underline">
-                  {post.author.name || post.author.username}
-                </span>
-                <span className="text-xs text-muted-foreground">
-                  @{post.author.username}
-                </span>
-                <span className="text-xs text-muted-foreground">·</span>
-                <span className="text-xs text-muted-foreground">
-                  {formatPostDate(post.createdAt)}
-                </span>
-              </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="text-[15px] font-semibold text-foreground group-hover:underline">
+                {post.author.name || post.author.username}
+              </span>
+              <span className="text-xs text-muted-foreground">
+                @{post.author.username}
+              </span>
+              <span className="text-xs text-muted-foreground">·</span>
+              <span className="text-xs text-muted-foreground">
+                {formatPostDate(post.createdAt)}
+              </span>
             </div>
-          </button>
-        </UserQuickActions>
+          </div>
+        </Link>
 
         {isOwner ? (
           <Button

@@ -33,10 +33,10 @@ export default function MobileChatFAB({ initialUnreadCount = 0 }: MobileChatFABP
       size="icon"
       onClick={toggleChat}
       aria-label={isChatOpen ? "Close chat" : "Open chat"}
-      className={`md:hidden fixed bottom-[calc(76px+env(safe-area-inset-bottom,0px))] right-4 h-12 w-12 rounded-full shadow-lg z-40 transition-all duration-200 active:scale-95 flex items-center justify-center ${
+      className={`md:hidden fixed bottom-[calc(76px+env(safe-area-inset-bottom,0px))] right-4 h-12 w-12 rounded-full shadow-2xl transition-all duration-200 active:scale-95 flex items-center justify-center ${
         isChatOpen
-          ? "bg-muted text-foreground border border-border"
-          : "bg-primary text-primary-foreground hover:bg-primary/90"
+          ? "z-[110] bg-destructive text-destructive-foreground hover:bg-destructive/90 ring-4 ring-background"
+          : "z-40 bg-primary text-primary-foreground hover:bg-primary/90"
       }`}
     >
       <div className="relative flex items-center justify-center">

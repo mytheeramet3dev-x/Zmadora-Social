@@ -387,7 +387,7 @@ function ChatPanel({ initialState }: ChatPanelProps) {
             <div className="border-b border-border p-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <p className="text-sm font-semibold">Messages</p>
+                  <p className="text-sm font-semibold">Messages & Calls</p>
                   <div className="rounded-full bg-sky-500/15 px-2.5 py-1 text-[11px] font-medium text-sky-300">
                     {contacts.length}
                   </div>
@@ -395,11 +395,12 @@ function ChatPanel({ initialState }: ChatPanelProps) {
 
                 {/* Mobile Close Button */}
                 <Button
-                  variant="ghost"
+                  variant="outline"
                   size="icon"
                   onClick={toggleChat}
-                  className="h-8 w-8 rounded-full xl:hidden"
+                  className="h-8 w-8 rounded-full border-border bg-card shadow-xs xl:hidden hover:bg-destructive hover:text-destructive-foreground hover:border-destructive transition-colors"
                   aria-label="Close chat"
+                  title="Close chat"
                 >
                   <XIcon className="h-4 w-4" />
                 </Button>
@@ -423,34 +424,67 @@ function ChatPanel({ initialState }: ChatPanelProps) {
                     const isActive = contact.id === activeContact?.id;
 
                     return (
-                      <button
+                      <div
                         key={contact.id}
-                        type="button"
                         onClick={() => handleSelectContact(contact.id)}
                         className={[
-                          "relative flex items-center gap-2.5 w-full rounded-md p-2 text-left transition-colors",
+                          "relative flex items-center justify-between gap-2.5 w-full rounded-md p-2 text-left transition-colors cursor-pointer group",
                           isActive ? "bg-accent text-foreground" : "hover:bg-accent/50 text-foreground/80",
                           isCollapsed ? "xl:justify-center" : "",
                         ].join(" ")}
                         title={isCollapsed ? (contact.name || contact.username) : undefined}
                       >
-                        <Avatar className={`border border-border shrink-0 ${isCollapsed ? 'xl:h-8 xl:w-8 h-9 w-9' : 'h-9 w-9'}`}>
-                          <AvatarImage src={contact.image || "/avatar.png"} />
-                        </Avatar>
-                        <div className={`min-w-0 flex-1 ${isCollapsed ? 'xl:hidden' : 'block'}`}>
-                          <p className="truncate text-xs font-semibold text-foreground">
-                            {contact.name || contact.username}
-                          </p>
-                          <p className="truncate text-[11px] text-muted-foreground mt-0.5">
-                            {contact.lastMessage || "Tap to start chatting"}
-                          </p>
+                        <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                          <Avatar className={`border border-border shrink-0 ${isCollapsed ? 'xl:h-8 xl:w-8 h-9 w-9' : 'h-9 w-9'}`}>
+                            <AvatarImage src={contact.image || "/avatar.png"} />
+                          </Avatar>
+                          <div className={`min-w-0 flex-1 ${isCollapsed ? 'xl:hidden' : 'block'}`}>
+                            <p className="truncate text-xs font-semibold text-foreground">
+                              {contact.name || contact.username}
+                            </p>
+                            <p className="truncate text-[11px] text-muted-foreground mt-0.5">
+                              {contact.lastMessage || "Tap to start chatting"}
+                            </p>
+                          </div>
                         </div>
-                        {contact.unreadCount > 0 ? (
-                          <span className="absolute flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground top-2 right-2">
-                            {contact.unreadCount > 9 ? "9+" : contact.unreadCount}
-                          </span>
-                        ) : null}
-                      </button>
+
+                        <div className={`flex items-center gap-1 shrink-0 ${isCollapsed ? 'xl:hidden' : 'flex'}`}>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              startCall(contact.id, "AUDIO");
+                            }}
+                            className="h-7 w-7 rounded-full text-muted-foreground hover:text-foreground hover:bg-primary/10"
+                            title="Audio Call"
+                            aria-label="Audio call"
+                          >
+                            <PhoneIcon className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              startCall(contact.id, "VIDEO");
+                            }}
+                            className="h-7 w-7 rounded-full text-muted-foreground hover:text-foreground hover:bg-primary/10"
+                            title="Video Call"
+                            aria-label="Video call"
+                          >
+                            <VideoIcon className="h-3.5 w-3.5" />
+                          </Button>
+
+                          {contact.unreadCount > 0 ? (
+                            <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground ml-1">
+                              {contact.unreadCount > 9 ? "9+" : contact.unreadCount}
+                            </span>
+                          ) : null}
+                        </div>
+                      </div>
                     );
                   })
                 ) : (
@@ -472,15 +506,16 @@ function ChatPanel({ initialState }: ChatPanelProps) {
           <div className={`flex-1 min-w-0 flex-col ${activeContact ? "flex" : "hidden xl:flex"}`}>
             {activeContact ? (
               <>
-                <div className="flex items-center justify-between border-b border-border px-3 sm:px-4 py-2.5 sm:py-3">
+                <div className="flex items-center justify-between border-b border-border px-3 sm:px-4 py-2.5 sm:py-3 bg-card/60 backdrop-blur-xs">
                   <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                     {/* Mobile Back Button to Contacts List */}
                     <Button
                       variant="ghost"
                       size="icon"
                       onClick={() => setActiveContactId(null)}
-                      className="h-8 w-8 rounded-md xl:hidden shrink-0"
+                      className="h-8 w-8 rounded-md xl:hidden shrink-0 text-muted-foreground hover:text-foreground hover:bg-accent"
                       aria-label="Back to contacts"
+                      title="Back to contacts"
                     >
                       <ArrowLeftIcon className="h-4 w-4" />
                     </Button>
@@ -498,31 +533,34 @@ function ChatPanel({ initialState }: ChatPanelProps) {
                   <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
                     <Button 
                       onClick={() => startCall(activeContact.id, "AUDIO")}
-                      variant="ghost" 
-                      size="icon" 
-                      className="h-8 w-8 rounded-md text-muted-foreground hover:text-foreground"
-                      title="Audio Call"
+                      variant="outline" 
+                      size="sm" 
+                      className="h-8 px-2.5 rounded-md gap-1.5 text-xs font-medium text-foreground hover:bg-primary hover:text-primary-foreground hover:border-primary transition-colors"
+                      title="Start Audio Call"
                       aria-label="Audio call"
                     >
-                      <PhoneIcon className="h-4 w-4" />
+                      <PhoneIcon className="h-3.5 w-3.5" />
+                      <span className="hidden sm:inline">Call</span>
                     </Button>
                     <Button 
                       onClick={() => startCall(activeContact.id, "VIDEO")}
-                      variant="ghost" 
-                      size="icon" 
-                      className="h-8 w-8 rounded-md text-muted-foreground hover:text-foreground"
-                      title="Video Call"
+                      variant="outline" 
+                      size="sm" 
+                      className="h-8 px-2.5 rounded-md gap-1.5 text-xs font-medium text-foreground hover:bg-primary hover:text-primary-foreground hover:border-primary transition-colors"
+                      title="Start Video Call"
                       aria-label="Video call"
                     >
-                      <VideoIcon className="h-4 w-4" />
+                      <VideoIcon className="h-3.5 w-3.5" />
+                      <span className="hidden sm:inline">Video</span>
                     </Button>
                     {/* Mobile Close Button */}
                     <Button
                       variant="ghost"
                       size="icon"
                       onClick={toggleChat}
-                      className="h-8 w-8 rounded-md xl:hidden"
+                      className="h-8 w-8 rounded-md xl:hidden hover:bg-destructive hover:text-destructive-foreground transition-colors ml-1"
                       aria-label="Close chat"
+                      title="Close chat"
                     >
                       <XIcon className="h-4 w-4" />
                     </Button>
