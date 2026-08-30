@@ -197,21 +197,6 @@ const getCachedRawProfile = (username: string) =>
                   },
                 },
               },
-              likes: {
-                select: {
-                  userId: true,
-                },
-              },
-              bookmarks: {
-                select: {
-                  userId: true,
-                },
-              },
-              reposts: {
-                select: {
-                  userId: true,
-                },
-              },
               comments: {
                 where: {
                   parentId: null,
@@ -293,21 +278,6 @@ const getCachedRawProfile = (username: string) =>
                     },
                   },
                 },
-                likes: {
-                  select: {
-                    userId: true,
-                  },
-                },
-                bookmarks: {
-                  select: {
-                    userId: true,
-                  },
-                },
-                reposts: {
-                  select: {
-                    userId: true,
-                  },
-                },
                 comments: {
                   where: {
                     parentId: null,
@@ -333,7 +303,7 @@ const getCachedRawProfile = (username: string) =>
 
       return { user, friends, userReposts };
     },
-    ["raw-user-profile", username],
+    ["raw-user-profile-global", username],
     { tags: [CACHE_TAGS.profile(username)], revalidate: 300 }
   )();
 
@@ -351,55 +321,103 @@ export async function getProfileByUsername(username: string) {
     const { user, friends, userReposts } = rawData;
     const isOwnProfile = viewerId === user.id;
 
-    const follow = viewerId && !isOwnProfile
-      ? await prisma.follows.findUnique({
-          where: {
-            followerId_followingId: {
-              followerId: viewerId,
-              followingId: user.id,
-            },
-          },
-        })
-      : null;
+    // Collect all post IDs displayed on this profile (authored + reposts)
+    const allProfilePostIds = [
+      ...user.posts.map((p) => p.id),
+      ...userReposts.filter((r) => r.post).map((r) => r.post.id),
+    ];
 
-    const viewerFollowingIds = viewerId && friends.length > 0
-      ? new Set(
-          (
-            await prisma.follows.findMany({
-              where: {
-                followerId: viewerId,
-                followingId: {
-                  in: friends.map((friend) => friend.id),
+    // Batch query viewer-specific state if logged in
+    const [follow, viewerFollowRows, likedRows, bookmarkedRows, repostedRows] = viewerId
+      ? await Promise.all([
+          !isOwnProfile
+            ? prisma.follows.findUnique({
+                where: {
+                  followerId_followingId: {
+                    followerId: viewerId,
+                    followingId: user.id,
+                  },
                 },
-              },
-              select: {
-                followingId: true,
-              },
-            })
-          ).map((viewerFollow) => viewerFollow.followingId)
-        )
-      : new Set<string>();
+              })
+            : Promise.resolve(null),
+          friends.length > 0
+            ? prisma.follows.findMany({
+                where: {
+                  followerId: viewerId,
+                  followingId: {
+                    in: friends.map((friend) => friend.id),
+                  },
+                },
+                select: {
+                  followingId: true,
+                },
+              })
+            : Promise.resolve([]),
+          allProfilePostIds.length > 0
+            ? prisma.like.findMany({
+                where: {
+                  userId: viewerId,
+                  postId: { in: allProfilePostIds },
+                },
+                select: { postId: true },
+              })
+            : Promise.resolve([]),
+          allProfilePostIds.length > 0
+            ? prisma.bookmark.findMany({
+                where: {
+                  userId: viewerId,
+                  postId: { in: allProfilePostIds },
+                },
+                select: { postId: true },
+              })
+            : Promise.resolve([]),
+          allProfilePostIds.length > 0
+            ? prisma.repost.findMany({
+                where: {
+                  userId: viewerId,
+                  postId: { in: allProfilePostIds },
+                },
+                select: { postId: true },
+              })
+            : Promise.resolve([]),
+        ])
+      : [null, [], [], [], []];
 
-    const authoredPosts = user.posts.map((post) => ({
+    const viewerFollowingIds = new Set(viewerFollowRows.map((f) => f.followingId));
+    const likedSet = new Set(likedRows.map((l) => l.postId));
+    const bookmarkedSet = new Set(bookmarkedRows.map((b) => b.postId));
+    const repostedSet = new Set(repostedRows.map((r) => r.postId));
+
+    const mapPostWithViewerState = (post: any, repostedBy: any, timelineDate: Date) => ({
       ...post,
-      repostedBy: null,
-      timelineDate: post.createdAt,
-    }));
+      likes: viewerId && likedSet.has(post.id) ? [{ userId: viewerId }] : [],
+      bookmarks: viewerId && bookmarkedSet.has(post.id) ? [{ userId: viewerId }] : [],
+      reposts: viewerId && repostedSet.has(post.id) ? [{ userId: viewerId }] : [],
+      repostedBy,
+      timelineDate,
+    });
+
+    const authoredPosts = user.posts.map((post) =>
+      mapPostWithViewerState(post, null, post.createdAt)
+    );
 
     const repostedPosts = userReposts
       .filter((r) => r.post)
-      .map((r) => ({
-        ...r.post,
-        repostedBy: {
-          id: user.id,
-          name: user.name,
-          username: user.username,
-        },
-        timelineDate: r.createdAt,
-      }));
+      .map((r) =>
+        mapPostWithViewerState(
+          r.post,
+          {
+            id: user.id,
+            name: user.name,
+            username: user.username,
+          },
+          r.createdAt
+        )
+      );
 
-    const combinedPosts = [...authoredPosts, ...repostedPosts]
-      .sort((a, b) => new Date(b.timelineDate).getTime() - new Date(a.timelineDate).getTime());
+    const combinedPosts = [...authoredPosts, ...repostedPosts].sort(
+      (a, b) => new Date(b.timelineDate).getTime() - new Date(a.timelineDate).getTime()
+    );
 
     return {
       ...user,

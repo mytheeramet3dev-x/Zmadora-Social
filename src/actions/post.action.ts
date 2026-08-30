@@ -251,21 +251,6 @@ const getCachedFeedPosts = (cursor?: string | null, take: number = FEED_PAGE_SIZ
             },
             take: 2,
           },
-          likes: {
-            select: {
-              userId: true,
-            },
-          },
-          bookmarks: {
-            select: {
-              userId: true,
-            },
-          },
-          reposts: {
-            select: {
-              userId: true,
-            },
-          },
           _count: {
             select: {
               likes: true,
@@ -279,7 +264,7 @@ const getCachedFeedPosts = (cursor?: string | null, take: number = FEED_PAGE_SIZ
 
       return posts;
     },
-    ["feed-posts-page", cursor || "initial", take.toString()],
+    ["feed-posts-page-global", cursor || "initial", take.toString()],
     { tags: [CACHE_TAGS.feed, CACHE_TAGS.posts], revalidate: 60 }
   )();
 
@@ -293,26 +278,77 @@ async function getFeedPage({
   const hasMore = rawPosts.length > take;
   const pagePosts = hasMore ? rawPosts.slice(0, take) : rawPosts;
 
+  const postIds = pagePosts.map((p) => p.id);
   const authorIds = pagePosts.map((p) => p.author.id);
-  const followingSet = viewerUserId && authorIds.length > 0
-    ? new Set(
-        (
-          await prisma.follows.findMany({
-            where: {
-              followerId: viewerUserId,
-              followingId: { in: authorIds },
+
+  if (!viewerUserId || postIds.length === 0) {
+    return {
+      posts: pagePosts.map((post) => {
+        const { _count, ...author } = post.author;
+        return {
+          ...post,
+          likes: [],
+          bookmarks: [],
+          reposts: [],
+          author: {
+            ...author,
+            stats: {
+              followers: _count.followers,
+              posts: _count.posts,
             },
-            select: { followingId: true },
-          })
-        ).map((f) => f.followingId)
-      )
-    : new Set<string>();
+            isFollowing: false,
+          },
+        };
+      }),
+      nextCursor: hasMore ? pagePosts[pagePosts.length - 1]?.id ?? null : null,
+    };
+  }
+
+  // Dynamic batch lookup for the viewer's personal state only
+  const [likedRows, bookmarkedRows, repostedRows, followRows] = await Promise.all([
+    prisma.like.findMany({
+      where: {
+        userId: viewerUserId,
+        postId: { in: postIds },
+      },
+      select: { postId: true },
+    }),
+    prisma.bookmark.findMany({
+      where: {
+        userId: viewerUserId,
+        postId: { in: postIds },
+      },
+      select: { postId: true },
+    }),
+    prisma.repost.findMany({
+      where: {
+        userId: viewerUserId,
+        postId: { in: postIds },
+      },
+      select: { postId: true },
+    }),
+    prisma.follows.findMany({
+      where: {
+        followerId: viewerUserId,
+        followingId: { in: authorIds },
+      },
+      select: { followingId: true },
+    }),
+  ]);
+
+  const likedSet = new Set(likedRows.map((r) => r.postId));
+  const bookmarkedSet = new Set(bookmarkedRows.map((r) => r.postId));
+  const repostedSet = new Set(repostedRows.map((r) => r.postId));
+  const followingSet = new Set(followRows.map((r) => r.followingId));
 
   return {
     posts: pagePosts.map((post) => {
       const { _count, ...author } = post.author;
       return {
         ...post,
+        likes: likedSet.has(post.id) ? [{ userId: viewerUserId }] : [],
+        bookmarks: bookmarkedSet.has(post.id) ? [{ userId: viewerUserId }] : [],
+        reposts: repostedSet.has(post.id) ? [{ userId: viewerUserId }] : [],
         author: {
           ...author,
           stats: {
@@ -465,7 +501,6 @@ export async function toggleLike(postId: string) {
     }
 
     revalidateTag(CACHE_TAGS.post(postId));
-    revalidateTag(CACHE_TAGS.feed);
     const postSnapshot = await getPostSnapshot(postId);
     if (postSnapshot) {
       publishFeedEvent({
@@ -624,7 +659,6 @@ export async function toggleRepost(postId: string) {
 
     revalidatePath("/");
     revalidateTag(CACHE_TAGS.post(postId));
-    revalidateTag(CACHE_TAGS.feed);
     const currentUser = await prisma.user.findUnique({
       where: { id: userId },
       select: { username: true },

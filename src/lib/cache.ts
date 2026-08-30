@@ -105,6 +105,19 @@ class UpstashRedisDriver {
   }
 
   async deletePattern(prefix: string): Promise<void> {
+    try {
+      const pattern = prefix.endsWith("*") ? prefix : `${prefix}*`;
+      const keys = (await this.execute(["KEYS", pattern])) as string[] | null;
+      if (Array.isArray(keys) && keys.length > 0) {
+        // Delete in batches of 100 keys to avoid Redis argument overflow
+        for (let i = 0; i < keys.length; i += 100) {
+          const batch = keys.slice(i, i + 100);
+          await this.execute(["DEL", ...batch]);
+        }
+      }
+    } catch (error) {
+      console.warn("Upstash Redis deletePattern failed:", error);
+    }
     await this.fallback.deletePattern(prefix);
   }
 }
