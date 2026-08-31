@@ -179,7 +179,6 @@ function NotificationBell({
 
     return () => {
       channel.unbind("notification-event", handleNotificationEvent);
-      pusherClient.unsubscribe(`user-${userId}`);
     };
   }, [refreshNotifications, userId]);
 

@@ -295,7 +295,7 @@ export async function getChatState(activeContactId?: string | null) {
     const resolvedActiveContactId =
       activeContactId && contacts.some((contact) => contact.id === activeContactId)
         ? activeContactId
-        : contacts[0]?.id ?? null;
+        : null;
 
     if (resolvedActiveContactId) {
       await markConversationMessagesAsRead(prisma, resolvedActiveContactId, userId);
@@ -329,6 +329,23 @@ export async function getChatState(activeContactId?: string | null) {
       activeContactId: null,
       messages: [],
     };
+  }
+}
+
+export async function markConversationAsRead(contactId: string) {
+  try {
+    const prisma = getPrismaClient();
+    const userId = await getDbUserId();
+
+    if (!userId || !contactId) {
+      return { success: false, error: "Invalid request" };
+    }
+
+    await markConversationMessagesAsRead(prisma, contactId, userId);
+    return { success: true };
+  } catch (error) {
+    console.error("Failed to mark conversation as read:", error);
+    return { success: false, error: "Failed to mark as read" };
   }
 }
 

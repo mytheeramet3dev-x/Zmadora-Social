@@ -1,6 +1,11 @@
 "use client";
 
-import { getChatState, getConversation, sendDirectMessage } from "@/actions/chat.action";
+import {
+  getChatState,
+  getConversation,
+  markConversationAsRead,
+  sendDirectMessage,
+} from "@/actions/chat.action";
 import { useLayoutChrome } from "@/components/layout/LayoutChromeContext";
 import { Avatar, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -233,12 +238,24 @@ function ChatPanel({ initialState }: ChatPanelProps) {
     const handleChatEvent = (payload: ChatSocketPayload) => {
       if (payload.type !== "chat_message") return;
 
-      const incomingContactId = payload.message.senderId;
-      const shouldAppendToOpenThread = activeContactIdRef.current === incomingContactId;
+      const isSender = payload.message.senderId === viewerUserId;
+      const resolvedContactId = isSender
+        ? payload.message.receiverId
+        : payload.message.senderId;
+      const shouldAppendToOpenThread =
+        activeContactIdRef.current === resolvedContactId;
 
-      setContacts((current) =>
-        sortContacts([
-          ...current.filter((contact) => contact.id !== incomingContactId),
+      // 1. Update contacts list with correct resolved contact identity and unread count
+      setContacts((current) => {
+        const existing = current.find((contact) => contact.id === resolvedContactId);
+        const nextUnread = isSender
+          ? existing?.unreadCount || 0
+          : shouldAppendToOpenThread
+          ? 0
+          : (existing?.unreadCount || 0) + 1;
+
+        return sortContacts([
+          ...current.filter((contact) => contact.id !== resolvedContactId),
           {
             id: payload.contact.id,
             name: payload.contact.name,
@@ -246,29 +263,52 @@ function ChatPanel({ initialState }: ChatPanelProps) {
             image: payload.contact.image,
             lastMessage: payload.message.content,
             lastMessageAt: payload.message.createdAt,
-            unreadCount: shouldAppendToOpenThread
-              ? 0
-              : (current.find((contact) => contact.id === incomingContactId)?.unreadCount || 0) + 1,
+            unreadCount: nextUnread,
           },
-        ])
-      );
+        ]);
+      });
 
+      // 2. Reconcile message in thread (prevent duplicates from Pusher echo or out-of-order responses)
       setMessagesByContact((current) => {
-        const thread = current[incomingContactId] || [];
+        const thread = current[resolvedContactId] || [];
+
+        // If message with real ID already exists, do not duplicate
         if (thread.some((message) => message.id === payload.message.id)) {
           return current;
         }
+
+        // If sender echo arrives before server action response, reconcile with matching optimistic temp message
+        if (isSender) {
+          const tempIndex = thread.findIndex(
+            (m) =>
+              m.id.startsWith("temp-") &&
+              m.senderId === viewerUserId &&
+              m.receiverId === resolvedContactId &&
+              m.content === payload.message.content
+          );
+
+          if (tempIndex !== -1) {
+            const nextThread = [...thread];
+            nextThread[tempIndex] = payload.message;
+            return {
+              ...current,
+              [resolvedContactId]: nextThread,
+            };
+          }
+        }
+
+        // If open thread or cached, append message
         return {
           ...current,
-          [incomingContactId]: shouldAppendToOpenThread
+          [resolvedContactId]: shouldAppendToOpenThread
             ? [...thread, payload.message]
             : thread,
         };
       });
 
-      if (shouldAppendToOpenThread) {
-        // Just mark read on server in background
-        void getConversation(incomingContactId);
+      // 3. Mark read in background if open thread and received from other user
+      if (shouldAppendToOpenThread && !isSender) {
+        void markConversationAsRead(resolvedContactId);
       }
     };
 
@@ -276,7 +316,6 @@ function ChatPanel({ initialState }: ChatPanelProps) {
 
     return () => {
       channel.unbind("chat-event", handleChatEvent);
-      pusherClient.unsubscribe(`user-${viewerUserId}`);
     };
   }, [viewerUserId]);
 
@@ -319,24 +358,30 @@ function ChatPanel({ initialState }: ChatPanelProps) {
     const normalized = draft.trim();
     if (!normalized || !activeContactId || !viewerUserId) return;
 
+    const targetContactId = activeContactId;
     const clientMessageId = `temp-${crypto.randomUUID()}`;
     const optimisticMessage: ChatMessage = {
       id: clientMessageId,
       senderId: viewerUserId,
-      receiverId: activeContactId,
+      receiverId: targetContactId,
       content: normalized,
       createdAt: new Date().toISOString(),
     };
 
-    const previousContacts = contacts;
+    // Capture target contact state before optimistic mutation
+    const targetContact = contacts.find((c) => c.id === targetContactId);
+    const previousLastMessage = targetContact?.lastMessage ?? null;
+    const previousLastMessageAt = targetContact?.lastMessageAt ?? null;
+
     setMessagesByContact((current) => ({
       ...current,
-      [activeContactId]: [...(current[activeContactId] || []), optimisticMessage],
+      [targetContactId]: [...(current[targetContactId] || []), optimisticMessage],
     }));
+
     setContacts((current) =>
       sortContacts(
         current.map((contact) =>
-          contact.id === activeContactId
+          contact.id === targetContactId
             ? {
                 ...contact,
                 lastMessage: normalized,
@@ -349,27 +394,58 @@ function ChatPanel({ initialState }: ChatPanelProps) {
     setDraft("");
 
     startSendTransition(async () => {
-      const result = await sendDirectMessage(activeContactId, normalized);
+      const result = await sendDirectMessage(targetContactId, normalized);
       if (!result.success) {
-        // Rollback optimistic message AND contacts on error
+        // Rollback only the failed optimistic message
         setMessagesByContact((current) => ({
           ...current,
-          [activeContactId]: (current[activeContactId] || []).filter(
+          [targetContactId]: (current[targetContactId] || []).filter(
             (message) => message.id !== clientMessageId
           ),
         }));
-        setContacts(previousContacts);
+
+        // Restore target contact's previous lastMessage only if it hasn't been superseded by a newer message
+        setContacts((current) =>
+          sortContacts(
+            current.map((contact) => {
+              if (
+                contact.id === targetContactId &&
+                contact.lastMessageAt === optimisticMessage.createdAt
+              ) {
+                return {
+                  ...contact,
+                  lastMessage: previousLastMessage,
+                  lastMessageAt: previousLastMessageAt,
+                };
+              }
+              return contact;
+            })
+          )
+        );
+
         toast.error(result.error || "Failed to send message");
         return;
       }
-      // Replace optimistic message with the real one from the server
+
+      // Reconcile temporary message with real server message (prevent duplicate if Pusher echo arrived first)
       if (result.message) {
-        setMessagesByContact((current) => ({
-          ...current,
-          [activeContactId]: (current[activeContactId] || []).map((message) =>
-            message.id === clientMessageId ? (result.message as ChatMessage) : message
-          ),
-        }));
+        setMessagesByContact((current) => {
+          const thread = current[targetContactId] || [];
+          const hasRealMessage = thread.some((m) => m.id === result.message!.id);
+          if (hasRealMessage) {
+            return {
+              ...current,
+              [targetContactId]: thread.filter((m) => m.id !== clientMessageId),
+            };
+          }
+
+          return {
+            ...current,
+            [targetContactId]: thread.map((m) =>
+              m.id === clientMessageId ? (result.message as ChatMessage) : m
+            ),
+          };
+        });
       }
     });
   };
