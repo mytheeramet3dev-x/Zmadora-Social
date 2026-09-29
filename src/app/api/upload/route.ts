@@ -6,11 +6,6 @@ const MAX_FILE_SIZE = 5 * 1024 * 1024;
 const ACCEPTED_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
 
 function getFileExtension(file: File) {
-  const fileNameExtension = file.name.split(".").pop()?.toLowerCase();
-  if (fileNameExtension) {
-    return fileNameExtension;
-  }
-
   switch (file.type) {
     case "image/jpeg":
       return "jpg";
