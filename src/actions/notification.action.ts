@@ -4,12 +4,22 @@ import prisma from "@/lib/prisma";
 import { publishNotificationEvent } from "@/lib/notification-events";
 import { getDbUserId } from "./user.action";
 
-export async function getNotifications(limit = 8) {
+const DEFAULT_NOTIFICATION_LIMIT = 8;
+const MAX_NOTIFICATION_LIMIT = 50;
+
+function normalizeNotificationLimit(limit: number) {
+  if (!Number.isFinite(limit)) return DEFAULT_NOTIFICATION_LIMIT;
+  return Math.min(MAX_NOTIFICATION_LIMIT, Math.max(1, Math.trunc(limit)));
+}
+
+export async function getNotifications(limit = DEFAULT_NOTIFICATION_LIMIT) {
   try {
     const userId = await getDbUserId();
     if (!userId) {
       return { notifications: [], unreadCount: 0 };
     }
+
+    const safeLimit = normalizeNotificationLimit(limit);
 
     const [notifications, unreadCount] = await Promise.all([
       prisma.notification.findMany({
@@ -19,7 +29,7 @@ export async function getNotifications(limit = 8) {
         orderBy: {
           createdAt: "desc",
         },
-        take: limit,
+        take: safeLimit,
         include: {
           creator: {
             select: {
