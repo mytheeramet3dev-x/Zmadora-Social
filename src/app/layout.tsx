@@ -11,6 +11,7 @@ import ChatRail from "@/components/chat/ChatRail";
 import { CallProvider } from "@/components/chat/CallProvider";
 import { Toaster } from "react-hot-toast";
 import MobileAppShell from "@/components/layout/MobileAppShell";
+import AiChatWidget from "@/components/chat/AiChatWidget";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -60,6 +61,7 @@ export default function RootLayout({
                     </SidebarLayout>
                   </div>
                   <MobileAppShell />
+                  <AiChatWidget />
                 </main>
               </div>
             </LayoutChromeProvider>

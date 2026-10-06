@@ -40,3 +40,6 @@ next-env.d.ts
 /public/uploads
 
 .vscode/
+
+# local Clerk development artifacts
+/.clerk/
